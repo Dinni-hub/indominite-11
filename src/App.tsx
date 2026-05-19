@@ -116,6 +116,7 @@ import {
   Paperclip,
   FileImage,
   ClipboardList,
+  Play,
 } from "lucide-react";
 import { BottomNav, NavItem } from "./components/BottomNav";
 
@@ -156,6 +157,7 @@ interface Order {
   calculatedProfit?: number;
   isReadyForNotify?: boolean;
   isDeleted?: boolean;
+  isDemo?: boolean;
   attachmentUrl?: string;
   attachmentType?: "image" | "file";
   attachmentName?: string;
@@ -847,7 +849,11 @@ const getLocalStorageItem = (key: string, defaultValue: string) => {
   }
 };
 
-const OWNER_EMAILS = ["indominite@gmail.com", "innanifiddinillah@gmail.com"];
+const OWNER_EMAILS = [
+  "indominite@gmail.com",
+  "innanifiddinillah@gmail.com",
+  "indominitemode@gmail.com",
+];
 
 const isOwnerEmail = (email: string | null | undefined) => {
   if (!email) return false;
@@ -867,22 +873,42 @@ const formatDateToString = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-
-
-const RadioGroup = ({ label, options, current, setVal, number }: { label: string, options: string[], current: string, setVal: (v: string) => void, number: string }) => (
+const RadioGroup = ({
+  label,
+  options,
+  current,
+  setVal,
+  number,
+}: {
+  label: string;
+  options: string[];
+  current: string;
+  setVal: (v: string) => void;
+  number: string;
+}) => (
   <div className="space-y-3">
-    <label className="text-sm font-bold text-[#3D2B1F] leading-snug block">{number}. {label}</label>
+    <label className="text-sm font-bold text-[#3D2B1F] leading-snug block">
+      {number}. {label}
+    </label>
     <div className="flex flex-col gap-3">
-      {options.map(opt => (
-        <div 
-          key={opt} 
+      {options.map((opt) => (
+        <div
+          key={opt}
           className="flex items-center gap-3 cursor-pointer group"
           onClick={() => setVal(opt)}
         >
-          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${current === opt ? 'border-[#3D2B1F]' : 'border-stone-300'}`}>
-            {current === opt && <div className="w-2.5 h-2.5 bg-[#3D2B1F] rounded-full animate-fade-in" />}
+          <div
+            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${current === opt ? "border-[#3D2B1F]" : "border-stone-300"}`}
+          >
+            {current === opt && (
+              <div className="w-2.5 h-2.5 bg-[#3D2B1F] rounded-full animate-fade-in" />
+            )}
           </div>
-          <span className={`text-sm transition-colors ${current === opt ? 'font-bold text-[#3D2B1F]' : 'font-medium text-[#3D2B1F]/70 group-hover:text-[#3D2B1F]'}`}>{opt}</span>
+          <span
+            className={`text-sm transition-colors ${current === opt ? "font-bold text-[#3D2B1F]" : "font-medium text-[#3D2B1F]/70 group-hover:text-[#3D2B1F]"}`}
+          >
+            {opt}
+          </span>
         </div>
       ))}
     </div>
@@ -904,66 +930,105 @@ function KuesionerForm({ onSubmit }: { onSubmit: (data: any) => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <p className="text-sm font-bold text-[#3D2B1F]/70 mb-4">Bantu Indomi Nite Jadi Lebih Baik!</p>
-      
-      <RadioGroup 
+      <p className="text-sm font-bold text-[#3D2B1F]/70 mb-4">
+        Bantu Indomi Nite Jadi Lebih Baik!
+      </p>
+
+      <RadioGroup
         number="1"
         label="Seberapa mudah Anda menemukan menu yang diinginkan di dalam aplikasi?"
         options={["Sangat Sulit", "Sulit", "Cukup Mudah", "Sangat Mudah"]}
-        current={q1} setVal={setQ1}
-      />
-      
-      <RadioGroup 
-        number="2"
-        label="Bagaimana penilaian Anda terhadap tampilan (layout) dan desain aplikasi?"
-        options={["Sangat Tidak Menarik", "Kurang Menarik", "Cukup Menarik", "Sangat Menarik"]}
-        current={q2} setVal={setQ2}
-      />
-      
-      <RadioGroup 
-        number="3"
-        label="Bagaimana penilaian Anda terhadap kejelasan informasi harga yang tertera di aplikasi?"
-        options={["Sangat Tidak Jelas", "Kurang Jelas", "Cukup Jelas", "Sangat Jelas"]}
-        current={q3} setVal={setQ3}
+        current={q1}
+        setVal={setQ1}
       />
 
-      <RadioGroup 
+      <RadioGroup
+        number="2"
+        label="Bagaimana penilaian Anda terhadap tampilan (layout) dan desain aplikasi?"
+        options={[
+          "Sangat Tidak Menarik",
+          "Kurang Menarik",
+          "Cukup Menarik",
+          "Sangat Menarik",
+        ]}
+        current={q2}
+        setVal={setQ2}
+      />
+
+      <RadioGroup
+        number="3"
+        label="Bagaimana penilaian Anda terhadap kejelasan informasi harga yang tertera di aplikasi?"
+        options={[
+          "Sangat Tidak Jelas",
+          "Kurang Jelas",
+          "Cukup Jelas",
+          "Sangat Jelas",
+        ]}
+        current={q3}
+        setVal={setQ3}
+      />
+
+      <RadioGroup
         number="4"
         label="Seberapa sering Anda mengalami kendala teknis (seperti error atau lag) saat menggunakan aplikasi?"
         options={["Selalu", "Sering", "Jarang", "Tidak Pernah"]}
-        current={q4} setVal={setQ4}
+        current={q4}
+        setVal={setQ4}
       />
 
-      <RadioGroup 
+      <RadioGroup
         number="5"
         label="Bagaimana penilaian Anda terhadap alur pemesanan (dari pilih menu hingga selesai) di aplikasi ini?"
-        options={["Sangat Berbelit-belit", "Cukup Membingungkan", "Cukup Ringkas/Jelas", "Sangat Praktis dan Cepat"]}
-        current={q5} setVal={setQ5}
+        options={[
+          "Sangat Berbelit-belit",
+          "Cukup Membingungkan",
+          "Cukup Ringkas/Jelas",
+          "Sangat Praktis dan Cepat",
+        ]}
+        current={q5}
+        setVal={setQ5}
       />
 
       <div className="space-y-3">
-        <label className="text-sm font-bold text-[#3D2B1F] leading-snug block">6. Apa saran atau masukan tambahan Anda agar aplikasi INDOMI NITE menjadi lebih baik ke depannya?</label>
+        <label className="text-sm font-bold text-[#3D2B1F] leading-snug block">
+          6. Apa saran atau masukan tambahan Anda agar aplikasi INDOMI NITE
+          menjadi lebih baik ke depannya?
+        </label>
         <textarea
           className="w-full bg-[#F5F2EA] border-none text-[#3D2B1F] placeholder-[#3D2B1F]/40 p-4 rounded-2xl resize-none h-32 focus:outline-none focus:ring-2 focus:ring-[#3D2B1F]/20 text-sm font-medium shadow-inner"
           placeholder="Ketik saran Anda di sini..."
           value={q6}
-          onChange={e => setQ6(e.target.value)}
+          onChange={(e) => setQ6(e.target.value)}
         ></textarea>
       </div>
-      
+
       <button
         type="submit"
         className="w-full py-4 bg-[#3D2B1F] text-white rounded-2xl font-bold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-stone-800 transition-colors"
         disabled={!q1 || !q2 || !q3 || !q4 || !q5}
       >
-         Kirim Kuesioner
+        Kirim Kuesioner
       </button>
     </form>
   );
 }
 
 export default function App() {
-  
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "true") {
+      return true;
+    }
+    if (params.get("demo") === "false") {
+      return false;
+    }
+    return localStorage.getItem("app_isDemoMode") === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("app_isDemoMode", isDemoMode.toString());
+  }, [isDemoMode]);
+
   const [view, setView] = useState<View>(() => {
     try {
       const saved = localStorage.getItem("app_view");
@@ -1126,6 +1191,30 @@ export default function App() {
     return [];
   });
 
+  const [demoOrders, setDemoOrders] = useState<Order[]>(() => {
+    try {
+      const saved = localStorage.getItem("app_demo_orders");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((o: any) => ({
+            ...o,
+            timestamp: o.timestamp ? new Date(o.timestamp) : new Date(),
+          }));
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing demo orders", e);
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("app_demo_orders", JSON.stringify(demoOrders));
+  }, [demoOrders]);
+
+  const [showDemoOrdersOwner, setShowDemoOrdersOwner] = useState(false);
+
   const [userRole, setUserRole] = useState<"guest" | "customer" | "owner">(
     () => {
       try {
@@ -1141,8 +1230,6 @@ export default function App() {
   const [isResettingData, setIsResettingData] = useState(false);
   const [isPerformingReset, setIsPerformingReset] = useState(false);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
-
-  
 
   useEffect(() => {
     async function testConnection() {
@@ -1241,24 +1328,16 @@ export default function App() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const email = result.user.email?.toLowerCase();
+      updateRoleAndDemo(result.user.email, result.user);
+
       if (isOwnerEmail(email)) {
-        setUserRole("owner");
         setView("owner");
         showNotification("Selamat datang, Owner!");
 
         // Create owner session in Firestore to ensure rules recognize this user as owner
-        if (isFirebaseConfigured && result.user) {
-          try {
-            await setDoc(doc(db, "owner_sessions", result.user.uid), {
-              secret: "IndominiteSecret2026",
-              email: email,
-              timestamp: serverTimestamp(),
-            });
-            console.log("Owner session created/updated");
-          } catch (e) {
-            console.error("Failed to create owner session", e);
-          }
-        }
+        // Note: isFirebaseConfigured is memoized based on isDemoMode. In the exact tick updateRoleAndDemo runs,
+        // it might still use old value in closure here. But updateRoleAndDemo already handles owner_sessions for Firebase
+        // if user is demo mode, the state will be updated soon. Actually updateRoleAndDemo already did the Firestore sync!
       } else {
         showNotification("Akses ditolak. Email ini bukan owner.");
         await signOut(auth);
@@ -1280,9 +1359,39 @@ export default function App() {
     }
   };
 
+  const updateRoleAndDemo = (email: string | null | undefined, userObj?: any) => {
+    if (!email) return;
+    const lower = email.toLowerCase();
+    
+    if (lower === "indominitemode@gmail.com") {
+      setIsDemoMode(true);
+      showNotification("Mode Demo Diaktifkan");
+      setUserRole("owner");
+    } else if (lower === "indominite@gmail.com") {
+      setIsDemoMode(false);
+      showNotification("Mode Asli Diaktifkan");
+      setUserRole("owner");
+    } else if (isOwnerEmail(email)) {
+      setUserRole("owner");
+    } else {
+      setUserRole("customer");
+    }
+
+    if (isOwnerEmail(email) && userObj?.isAnonymous) {
+      if (isFirebaseConfigured) {
+        setDoc(doc(db, "owner_sessions", userObj.uid), {
+          secret: "IndominiteSecret2026",
+          email: OWNER_EMAILS[0],
+          timestamp: serverTimestamp(),
+        }).catch((e) => console.error("Auto-session on update failed", e));
+      }
+    }
+  };
+
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      updateRoleAndDemo(result.user.email, result.user);
       showNotification("Login berhasil!");
     } catch (error) {
       console.error("Login error:", error);
@@ -1454,8 +1563,8 @@ export default function App() {
   }, [orders, userRole]);
 
   const isFirebaseConfigured = useMemo(() => {
-    return true;
-  }, []);
+    return !isDemoMode;
+  }, [isDemoMode]);
 
   useEffect(() => {
     console.log("Firebase configured:", isFirebaseConfigured);
@@ -1869,16 +1978,28 @@ export default function App() {
     localStorage.setItem("app_address", address);
   }, [address]);
 
+  const allOrdersForOwner = useMemo(() => {
+    const combined = [...demoOrders, ...orders];
+    if (showDemoOrdersOwner) {
+      return combined.filter((o) => o.isDemo || String(o.id).includes("DEMO"));
+    }
+    return combined.filter((o) => !o.isDemo && !String(o.id).includes("DEMO"));
+  }, [demoOrders, orders, showDemoOrdersOwner]);
+
   // Calculate stats from orders
   const { totalRevenue, totalOrders, revenueToday } = useMemo(() => {
-    const validOrders = orders.filter(
+    const validOrders = allOrdersForOwner.filter(
       (o) => o.status !== "dibatalkan" && !o.isDeleted,
     );
     const total = validOrders.reduce((sum, order) => sum + order.total, 0);
 
     const today = new Date().toDateString();
     const todayRevenue = validOrders
-      .filter((o) => o.timestamp.toDateString() === today)
+      .filter((o) => {
+        const time =
+          o.timestamp instanceof Date ? o.timestamp : new Date(o.timestamp);
+        return time.toDateString() === today;
+      })
       .reduce((sum, order) => sum + order.total, 0);
 
     const realOrdersCount = validOrders.filter(
@@ -1890,7 +2011,7 @@ export default function App() {
       totalOrders: realOrdersCount,
       revenueToday: todayRevenue,
     };
-  }, [orders]);
+  }, [allOrdersForOwner]);
 
   const handleSelectItem = (item: any) => {
     setSelectedItem(item);
@@ -1902,6 +2023,7 @@ export default function App() {
     phone: string,
     email: string,
     orderAddress: string,
+    isTestChecked: boolean,
   ) => {
     if (isPlacingOrderRef.current) return;
     if (!cart || cart.length === 0) return;
@@ -1909,20 +2031,24 @@ export default function App() {
     isPlacingOrderRef.current = true;
 
     const finalName = name || "Pelanggan";
+    const isThisOrderDemo = isTestChecked;
+
     setCustomerName(finalName);
     setCustomerPhone(phone);
     setCustomerEmail(email);
     setAddress(orderAddress);
 
     // 1. Calculate Order Number (Reset Daily)
-    const orderNumber = await getNextOrderNumber(isFirebaseConfigured, orders);
+    const orderNumber = isThisOrderDemo
+      ? 9999
+      : await getNextOrderNumber(isFirebaseConfigured, orders);
     const sessionId = Date.now().toString();
     setLastPlacedSessionId(sessionId);
     const baseOrderCount = orders.length;
 
     const newOrder: Order = {
-      id: `${(baseOrderCount + 1).toString().padStart(4, "0")}-${sessionId.slice(-4)}`,
-      orderNumber: orderNumber,
+      id: `${(baseOrderCount + 1).toString().padStart(4, "0")}-${sessionId.slice(-4)}${isThisOrderDemo ? "-DEMO" : ""}`,
+      orderNumber: String(orderNumber),
       sessionId: sessionId,
       uid: auth.currentUser?.uid || null,
       customerName: finalName,
@@ -1939,331 +2065,364 @@ export default function App() {
       status: "diterima",
       paymentStatus: "belum",
       isReadyForNotify: false,
+      isDemo: isThisOrderDemo,
     };
 
     const newOrders = [newOrder];
 
-    // 2. Deduct Inventory
+    // 2. Deduct Inventory (Skip if Demo)
     const newInventory = inventory.map((item) => ({ ...item }));
 
-    cart.forEach((cartItem) => {
-      // Deduct Main Item
-      if (cartItem.item.name === "Indomie Goreng Klasik") {
-        const idx = newInventory.findIndex(
-          (i) => i.name === "Indomie Goreng Klasik",
-        );
-        if (idx > -1)
-          newInventory[idx].stock = Math.max(
-            0,
-            newInventory[idx].stock - cartItem.quantity,
-          );
-      } else if (cartItem.item.name === "Indomie Kuah Soto") {
-        const idx = newInventory.findIndex(
-          (i) => i.name === "Indomie Soto Kuah",
-        );
-        if (idx > -1)
-          newInventory[idx].stock = Math.max(
-            0,
-            newInventory[idx].stock - cartItem.quantity,
-          );
-      } else if (cartItem.item.name === "Indomie Rendang") {
-        const idx = newInventory.findIndex((i) => i.name === "Indomie Rendang");
-        if (idx > -1)
-          newInventory[idx].stock = Math.max(
-            0,
-            newInventory[idx].stock - cartItem.quantity,
-          );
-      } else if (cartItem.item.name === "Telur Gulung") {
-        const telurIdx = newInventory.findIndex((i) => i.name === "Telur");
-        if (telurIdx > -1)
-          newInventory[telurIdx].stock = Math.max(
-            0,
-            newInventory[telurIdx].stock - cartItem.quantity,
-          );
-      } else if (cartItem.item.name === "Telur Gulung Sosis") {
-        const telurIdx = newInventory.findIndex((i) => i.name === "Telur");
-        if (telurIdx > -1)
-          newInventory[telurIdx].stock = Math.max(
-            0,
-            newInventory[telurIdx].stock - cartItem.quantity,
-          );
-        const sosisIdx = newInventory.findIndex((i) => i.name === "Sosis");
-        if (sosisIdx > -1)
-          newInventory[sosisIdx].stock = Math.max(
-            0,
-            newInventory[sosisIdx].stock - cartItem.quantity,
-          );
-      }
-
-      // Deduct Toppings
-      if (cartItem.toppings && Array.isArray(cartItem.toppings)) {
-        cartItem.toppings.forEach((topping) => {
-          if (topping.includes("Telur")) {
-            const idx = newInventory.findIndex((i) => i.name === "Telur");
-            if (idx > -1)
-              newInventory[idx].stock = Math.max(
-                0,
-                newInventory[idx].stock - cartItem.quantity,
-              );
-          }
-          if (topping.includes("Sosis")) {
-            const idx = newInventory.findIndex((i) => i.name === "Sosis");
-            if (idx > -1)
-              newInventory[idx].stock = Math.max(
-                0,
-                newInventory[idx].stock - cartItem.quantity,
-              );
-          }
-        });
-      }
-
-      // Deduct Packaging & Utensils
-      if (cartItem.item.name === "Indomie Kuah Soto") {
-        const bowlIdx = newInventory.findIndex((i) => i.name === "Bowl");
-        if (bowlIdx > -1)
-          newInventory[bowlIdx].stock = Math.max(
-            0,
-            newInventory[bowlIdx].stock - cartItem.quantity,
-          );
-        const sendokIdx = newInventory.findIndex((i) => i.name === "Sendok");
-        if (sendokIdx > -1)
-          newInventory[sendokIdx].stock = Math.max(
-            0,
-            newInventory[sendokIdx].stock - cartItem.quantity,
-          );
-        const garpuIdx = newInventory.findIndex((i) => i.name === "Garpu");
-        if (garpuIdx > -1)
-          newInventory[garpuIdx].stock = Math.max(
-            0,
-            newInventory[garpuIdx].stock - cartItem.quantity,
-          );
-        const plastikIdx = newInventory.findIndex((i) => i.name === "Plastik");
-        if (plastikIdx > -1)
-          newInventory[plastikIdx].stock = Math.max(
-            0,
-            newInventory[plastikIdx].stock - cartItem.quantity,
-          );
-      } else if (
-        cartItem.item.name === "Indomie Goreng Klasik" ||
-        cartItem.item.name === "Indomie Rendang"
-      ) {
-        const bowlIdx = newInventory.findIndex((i) => i.name === "Bowl");
-        if (bowlIdx > -1)
-          newInventory[bowlIdx].stock = Math.max(
-            0,
-            newInventory[bowlIdx].stock - cartItem.quantity,
-          );
-        const garpuIdx = newInventory.findIndex((i) => i.name === "Garpu");
-        if (garpuIdx > -1)
-          newInventory[garpuIdx].stock = Math.max(
-            0,
-            newInventory[garpuIdx].stock - cartItem.quantity,
-          );
-        const plastikIdx = newInventory.findIndex((i) => i.name === "Plastik");
-        if (plastikIdx > -1)
-          newInventory[plastikIdx].stock = Math.max(
-            0,
-            newInventory[plastikIdx].stock - cartItem.quantity,
-          );
-      } else if (
-        cartItem.item.name === "Telur Gulung" ||
-        cartItem.item.name === "Telur Gulung Sosis"
-      ) {
-        const tusukIdx = newInventory.findIndex((i) => i.name === "Tusuk Sate");
-        if (tusukIdx > -1)
-          newInventory[tusukIdx].stock = Math.max(
-            0,
-            newInventory[tusukIdx].stock - cartItem.quantity,
-          );
-        const plastikIdx = newInventory.findIndex((i) => i.name === "Plastik");
-        if (plastikIdx > -1)
-          newInventory[plastikIdx].stock = Math.max(
-            0,
-            newInventory[plastikIdx].stock - cartItem.quantity,
-          );
-      }
-    });
-
-    // 3. Update Local State Immediately (only if not using Firebase to avoid duplicates)
-    if (!isFirebaseConfigured) {
-      const updatedOrders = [...newOrders, ...orders];
-      setOrders(updatedOrders);
-      localStorage.setItem("app_orders", JSON.stringify(updatedOrders));
-    }
-
-    setInventory(newInventory);
-    localStorage.setItem("app_inventory", JSON.stringify(newInventory));
-
-    if (isFirebaseConfigured) {
-      // 1. Add Orders to Firestore
-      await Promise.all(
-        newOrders.map(async (order) => {
-          try {
-            const docRef = await addDoc(collection(db, "orders"), {
-              ...order,
-              timestamp: serverTimestamp(),
-            });
-
-            setCurrentOrderFirebaseKey(docRef.id);
-
-            // No need to update local state here as onSnapshot will handle it
-            // and we want to avoid any potential duplication or race conditions
-          } catch (err) {
-            console.error("Failed to add order to Firestore:", err);
-          }
-        }),
-      );
-
-      // 2. Update Inventory in Firestore using increment for better sync
-      const batch = writeBatch(db);
-      const inventoryDeductions: { [key: string]: number } = {};
-
+    if (!isThisOrderDemo) {
       cart.forEach((cartItem) => {
-        // Main Item
-        let mainItemId = "";
-        if (cartItem.item.name === "Indomie Goreng") mainItemId = "1";
-        else if (cartItem.item.name === "Indomie Soto") mainItemId = "10";
-        else if (cartItem.item.name === "Indomie Rendang") mainItemId = "11";
-        else if (cartItem.item.name === "Telur Gulung") {
-          inventoryDeductions["2"] =
-            (inventoryDeductions["2"] || 0) + cartItem.quantity; // Telur
+        // Deduct Main Item
+        if (cartItem.item.name === "Indomie Goreng Klasik") {
+          const idx = newInventory.findIndex(
+            (i) => i.name === "Indomie Goreng Klasik",
+          );
+          if (idx > -1)
+            newInventory[idx].stock = Math.max(
+              0,
+              newInventory[idx].stock - cartItem.quantity,
+            );
+        } else if (cartItem.item.name === "Indomie Kuah Soto") {
+          const idx = newInventory.findIndex(
+            (i) => i.name === "Indomie Soto Kuah",
+          );
+          if (idx > -1)
+            newInventory[idx].stock = Math.max(
+              0,
+              newInventory[idx].stock - cartItem.quantity,
+            );
+        } else if (cartItem.item.name === "Indomie Rendang") {
+          const idx = newInventory.findIndex(
+            (i) => i.name === "Indomie Rendang",
+          );
+          if (idx > -1)
+            newInventory[idx].stock = Math.max(
+              0,
+              newInventory[idx].stock - cartItem.quantity,
+            );
+        } else if (cartItem.item.name === "Telur Gulung") {
+          const telurIdx = newInventory.findIndex((i) => i.name === "Telur");
+          if (telurIdx > -1)
+            newInventory[telurIdx].stock = Math.max(
+              0,
+              newInventory[telurIdx].stock - cartItem.quantity,
+            );
         } else if (cartItem.item.name === "Telur Gulung Sosis") {
-          inventoryDeductions["2"] =
-            (inventoryDeductions["2"] || 0) + cartItem.quantity; // Telur
-          inventoryDeductions["9"] =
-            (inventoryDeductions["9"] || 0) + cartItem.quantity; // Sosis
+          const telurIdx = newInventory.findIndex((i) => i.name === "Telur");
+          if (telurIdx > -1)
+            newInventory[telurIdx].stock = Math.max(
+              0,
+              newInventory[telurIdx].stock - cartItem.quantity,
+            );
+          const sosisIdx = newInventory.findIndex((i) => i.name === "Sosis");
+          if (sosisIdx > -1)
+            newInventory[sosisIdx].stock = Math.max(
+              0,
+              newInventory[sosisIdx].stock - cartItem.quantity,
+            );
         }
 
-        if (mainItemId) {
-          inventoryDeductions[mainItemId] =
-            (inventoryDeductions[mainItemId] || 0) + cartItem.quantity;
-        }
-
-        // Toppings
+        // Deduct Toppings
         if (cartItem.toppings && Array.isArray(cartItem.toppings)) {
           cartItem.toppings.forEach((topping) => {
-            if (topping.includes("Telur"))
-              inventoryDeductions["2"] =
-                (inventoryDeductions["2"] || 0) + cartItem.quantity;
-            if (topping.includes("Sosis"))
-              inventoryDeductions["9"] =
-                (inventoryDeductions["9"] || 0) + cartItem.quantity;
+            if (topping.includes("Telur")) {
+              const idx = newInventory.findIndex((i) => i.name === "Telur");
+              if (idx > -1)
+                newInventory[idx].stock = Math.max(
+                  0,
+                  newInventory[idx].stock - cartItem.quantity,
+                );
+            }
+            if (topping.includes("Sosis")) {
+              const idx = newInventory.findIndex((i) => i.name === "Sosis");
+              if (idx > -1)
+                newInventory[idx].stock = Math.max(
+                  0,
+                  newInventory[idx].stock - cartItem.quantity,
+                );
+            }
           });
         }
 
-        // Packaging
-        if (cartItem.item.name === "Indomie Soto") {
-          inventoryDeductions["13"] =
-            (inventoryDeductions["13"] || 0) + cartItem.quantity; // Bowl
-          inventoryDeductions["14"] =
-            (inventoryDeductions["14"] || 0) + cartItem.quantity; // Sendok
-          inventoryDeductions["6"] =
-            (inventoryDeductions["6"] || 0) + cartItem.quantity; // Garpu
-          inventoryDeductions["12"] =
-            (inventoryDeductions["12"] || 0) + cartItem.quantity; // Plastik
+        // Deduct Packaging & Utensils
+        if (cartItem.item.name === "Indomie Kuah Soto") {
+          const bowlIdx = newInventory.findIndex((i) => i.name === "Bowl");
+          if (bowlIdx > -1)
+            newInventory[bowlIdx].stock = Math.max(
+              0,
+              newInventory[bowlIdx].stock - cartItem.quantity,
+            );
+          const sendokIdx = newInventory.findIndex((i) => i.name === "Sendok");
+          if (sendokIdx > -1)
+            newInventory[sendokIdx].stock = Math.max(
+              0,
+              newInventory[sendokIdx].stock - cartItem.quantity,
+            );
+          const garpuIdx = newInventory.findIndex((i) => i.name === "Garpu");
+          if (garpuIdx > -1)
+            newInventory[garpuIdx].stock = Math.max(
+              0,
+              newInventory[garpuIdx].stock - cartItem.quantity,
+            );
+          const plastikIdx = newInventory.findIndex(
+            (i) => i.name === "Plastik",
+          );
+          if (plastikIdx > -1)
+            newInventory[plastikIdx].stock = Math.max(
+              0,
+              newInventory[plastikIdx].stock - cartItem.quantity,
+            );
         } else if (
-          cartItem.item.name === "Indomie Goreng" ||
+          cartItem.item.name === "Indomie Goreng Klasik" ||
           cartItem.item.name === "Indomie Rendang"
         ) {
-          inventoryDeductions["5"] =
-            (inventoryDeductions["5"] || 0) + cartItem.quantity; // Packaging Box Kertas
-          inventoryDeductions["6"] =
-            (inventoryDeductions["6"] || 0) + cartItem.quantity; // Garpu
-          inventoryDeductions["12"] =
-            (inventoryDeductions["12"] || 0) + cartItem.quantity; // Plastik
+          const bowlIdx = newInventory.findIndex((i) => i.name === "Bowl");
+          if (bowlIdx > -1)
+            newInventory[bowlIdx].stock = Math.max(
+              0,
+              newInventory[bowlIdx].stock - cartItem.quantity,
+            );
+          const garpuIdx = newInventory.findIndex((i) => i.name === "Garpu");
+          if (garpuIdx > -1)
+            newInventory[garpuIdx].stock = Math.max(
+              0,
+              newInventory[garpuIdx].stock - cartItem.quantity,
+            );
+          const plastikIdx = newInventory.findIndex(
+            (i) => i.name === "Plastik",
+          );
+          if (plastikIdx > -1)
+            newInventory[plastikIdx].stock = Math.max(
+              0,
+              newInventory[plastikIdx].stock - cartItem.quantity,
+            );
         } else if (
           cartItem.item.name === "Telur Gulung" ||
           cartItem.item.name === "Telur Gulung Sosis"
         ) {
-          inventoryDeductions["4"] =
-            (inventoryDeductions["4"] || 0) + cartItem.quantity; // Tusuk Sate
-          inventoryDeductions["12"] =
-            (inventoryDeductions["12"] || 0) + cartItem.quantity; // Plastik
+          const tusukIdx = newInventory.findIndex(
+            (i) => i.name === "Tusuk Sate",
+          );
+          if (tusukIdx > -1)
+            newInventory[tusukIdx].stock = Math.max(
+              0,
+              newInventory[tusukIdx].stock - cartItem.quantity,
+            );
+          const plastikIdx = newInventory.findIndex(
+            (i) => i.name === "Plastik",
+          );
+          if (plastikIdx > -1)
+            newInventory[plastikIdx].stock = Math.max(
+              0,
+              newInventory[plastikIdx].stock - cartItem.quantity,
+            );
         }
       });
 
-      Object.entries(inventoryDeductions).forEach(([id, amount]) => {
-        console.log(`Updating inventory ID ${id} with deduction of ${amount}`);
-        batch.update(doc(db, "inventory", id), { stock: increment(-amount) });
-      });
+      // 3. Update Local State Immediately (only if not using Firebase to avoid duplicates)
+      if (!isFirebaseConfigured) {
+        const updatedOrders = [...newOrders, ...orders];
+        setOrders(updatedOrders);
+        localStorage.setItem("app_orders", JSON.stringify(updatedOrders));
+      }
 
-      batch
-        .commit()
-        .then(() => console.log("Inventory update committed successfully"))
-        .catch((err) => {
-          console.error("Failed to update inventory in Firestore:", err);
-        });
-    }
+      setInventory(newInventory);
+      localStorage.setItem("app_inventory", JSON.stringify(newInventory));
 
-    setCart([]);
-    setView("orders");
-    showNotification("Pesanan berhasil dikirim!");
-    setTimeout(() => {
-      isPlacingOrderRef.current = false;
-    }, 1000);
+      if (isFirebaseConfigured) {
+        // 1. Add Orders to Firestore
+        await Promise.all(
+          newOrders.map(async (order) => {
+            try {
+              const docRef = await addDoc(collection(db, "orders"), {
+                ...order,
+                timestamp: serverTimestamp(),
+              });
 
-    // 4. Send to Owner's WhatsApp automatically
-    const receiptText = generateReceiptText(newOrders[0]); // Using the first item for the text if multiple, or we could join them
-    // If multiple items were in cart, they are split into multiple orders in this implementation
-    // Let's create a combined receipt if there are multiple orders from the same placement
-    let combinedText = `*PESANAN BARU - INDOMI NITE*\n`;
-    combinedText += `--------------------------------\n`;
-    combinedText += `Nama Pelanggan: ${finalName}\n`;
-    if (phone) combinedText += `No. WhatsApp: ${phone}\n`;
-    combinedText += `Jam Pemesanan: ${new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}\n`;
-    combinedText += `Alamat: ${orderAddress}\n`;
-    combinedText += `--------------------------------\n`;
-    combinedText += `*Menu Pesanan:*\n`;
+              setCurrentOrderFirebaseKey(docRef.id);
 
-    let totalAll = 0;
-    cart.forEach((cartItem) => {
-      combinedText += `- ${cartItem.item.name} x${cartItem.quantity}\n`;
-      if (cartItem.toppings && cartItem.toppings.length > 0) {
-        const tMap = cartItem.toppings.reduce((acc: any, t: string) => {
-          acc[t] = (acc[t] || 0) + 1;
-          return acc;
-        }, {});
-        const isTelurGulung = cartItem.item.name
-          .toLowerCase()
-          .includes("telur gulung");
-        const formattedToppings = Object.entries(tMap).map(
-          ([name, count]: [string, any]) => {
-            const isSaus =
-              name.toLowerCase().includes("saus") ||
-              name.toLowerCase().includes("sambal") ||
-              name.toLowerCase().includes("tomat");
-            const cleanName = name.split("+")[0].split("Rp")[0].trim();
-            if (isSaus) {
-              return cleanName;
+              // No need to update local state here as onSnapshot will handle it
+              // and we want to avoid any potential duplication or race conditions
+            } catch (err) {
+              console.error("Failed to add order to Firestore:", err);
             }
-            return `${cleanName} x${count}`;
-          },
+          }),
         );
-        combinedText += `  Add on: ${formattedToppings.join(", ")}\n`;
-      }
-      if (cartItem.notes) {
-        combinedText += `  Catatan: ${cartItem.notes}\n`;
-      }
-      totalAll += cartItem.totalPrice;
-    });
 
-    combinedText += `--------------------------------\n`;
-    combinedText += `Total Pembayaran: Rp ${(totalAll || 0).toLocaleString()}\n`;
-    combinedText += `Metode Pembayaran: ${paymentMethod}\n`;
-    combinedText += `--------------------------------\n`;
+        // 2. Update Inventory in Firestore using increment for better sync
+        const batch = writeBatch(db);
+        const inventoryDeductions: { [key: string]: number } = {};
 
-    fetch("/api/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subject: `PESANAN BARU - INDOMI NITE - ${finalName}`,
-        text: combinedText,
-        html: combinedText.replace(/\n/g, "<br/>"),
-      }),
-    }).catch(console.error);
+        cart.forEach((cartItem) => {
+          // Main Item
+          let mainItemId = "";
+          if (cartItem.item.name === "Indomie Goreng") mainItemId = "1";
+          else if (cartItem.item.name === "Indomie Soto") mainItemId = "10";
+          else if (cartItem.item.name === "Indomie Rendang") mainItemId = "11";
+          else if (cartItem.item.name === "Telur Gulung") {
+            inventoryDeductions["2"] =
+              (inventoryDeductions["2"] || 0) + cartItem.quantity; // Telur
+          } else if (cartItem.item.name === "Telur Gulung Sosis") {
+            inventoryDeductions["2"] =
+              (inventoryDeductions["2"] || 0) + cartItem.quantity; // Telur
+            inventoryDeductions["9"] =
+              (inventoryDeductions["9"] || 0) + cartItem.quantity; // Sosis
+          }
+
+          if (mainItemId) {
+            inventoryDeductions[mainItemId] =
+              (inventoryDeductions[mainItemId] || 0) + cartItem.quantity;
+          }
+
+          // Toppings
+          if (cartItem.toppings && Array.isArray(cartItem.toppings)) {
+            cartItem.toppings.forEach((topping) => {
+              if (topping.includes("Telur"))
+                inventoryDeductions["2"] =
+                  (inventoryDeductions["2"] || 0) + cartItem.quantity;
+              if (topping.includes("Sosis"))
+                inventoryDeductions["9"] =
+                  (inventoryDeductions["9"] || 0) + cartItem.quantity;
+            });
+          }
+
+          // Packaging
+          if (cartItem.item.name === "Indomie Soto") {
+            inventoryDeductions["13"] =
+              (inventoryDeductions["13"] || 0) + cartItem.quantity; // Bowl
+            inventoryDeductions["14"] =
+              (inventoryDeductions["14"] || 0) + cartItem.quantity; // Sendok
+            inventoryDeductions["6"] =
+              (inventoryDeductions["6"] || 0) + cartItem.quantity; // Garpu
+            inventoryDeductions["12"] =
+              (inventoryDeductions["12"] || 0) + cartItem.quantity; // Plastik
+          } else if (
+            cartItem.item.name === "Indomie Goreng" ||
+            cartItem.item.name === "Indomie Rendang"
+          ) {
+            inventoryDeductions["5"] =
+              (inventoryDeductions["5"] || 0) + cartItem.quantity; // Packaging Box Kertas
+            inventoryDeductions["6"] =
+              (inventoryDeductions["6"] || 0) + cartItem.quantity; // Garpu
+            inventoryDeductions["12"] =
+              (inventoryDeductions["12"] || 0) + cartItem.quantity; // Plastik
+          } else if (
+            cartItem.item.name === "Telur Gulung" ||
+            cartItem.item.name === "Telur Gulung Sosis"
+          ) {
+            inventoryDeductions["4"] =
+              (inventoryDeductions["4"] || 0) + cartItem.quantity; // Tusuk Sate
+            inventoryDeductions["12"] =
+              (inventoryDeductions["12"] || 0) + cartItem.quantity; // Plastik
+          }
+        });
+
+        Object.entries(inventoryDeductions).forEach(([id, amount]) => {
+          console.log(
+            `Updating inventory ID ${id} with deduction of ${amount}`,
+          );
+          batch.update(doc(db, "inventory", id), { stock: increment(-amount) });
+        });
+
+        batch
+          .commit()
+          .then(() => console.log("Inventory update committed successfully"))
+          .catch((err) => {
+            console.error("Failed to update inventory in Firestore:", err);
+          });
+      }
+
+      setCart([]);
+      setView("orders");
+      showNotification("Pesanan berhasil dikirim!");
+      setTimeout(() => {
+        isPlacingOrderRef.current = false;
+      }, 1000);
+
+      // 4. Send to Owner's WhatsApp automatically (Skip if Demo)
+      if (!isThisOrderDemo) {
+        const receiptText = generateReceiptText(newOrders[0]); // Using the first item for the text if multiple, or we could join them
+        // If multiple items were in cart, they are split into multiple orders in this implementation
+        // Let's create a combined receipt if there are multiple orders from the same placement
+        let combinedText = `*PESANAN BARU - INDOMI NITE*\n`;
+        combinedText += `--------------------------------\n`;
+        combinedText += `Nama Pelanggan: ${finalName}\n`;
+        if (phone) combinedText += `No. WhatsApp: ${phone}\n`;
+        combinedText += `Jam Pemesanan: ${new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}\n`;
+        combinedText += `Alamat: ${orderAddress}\n`;
+        combinedText += `--------------------------------\n`;
+        combinedText += `*Menu Pesanan:*\n`;
+
+        let totalAll = 0;
+        cart.forEach((cartItem) => {
+          combinedText += `- ${cartItem.item.name} x${cartItem.quantity}\n`;
+          if (cartItem.toppings && cartItem.toppings.length > 0) {
+            const tMap = cartItem.toppings.reduce((acc: any, t: string) => {
+              acc[t] = (acc[t] || 0) + 1;
+              return acc;
+            }, {});
+            const isTelurGulung = cartItem.item.name
+              .toLowerCase()
+              .includes("telur gulung");
+            const formattedToppings = Object.entries(tMap).map(
+              ([name, count]: [string, any]) => {
+                const isSaus =
+                  name.toLowerCase().includes("saus") ||
+                  name.toLowerCase().includes("sambal") ||
+                  name.toLowerCase().includes("tomat");
+                const cleanName = name.split("+")[0].split("Rp")[0].trim();
+                if (isSaus) {
+                  return cleanName;
+                }
+                return `${cleanName} x${count}`;
+              },
+            );
+            combinedText += `  Add on: ${formattedToppings.join(", ")}\n`;
+          }
+          if (cartItem.notes) {
+            combinedText += `  Catatan: ${cartItem.notes}\n`;
+          }
+          totalAll += cartItem.totalPrice;
+        });
+
+        combinedText += `--------------------------------\n`;
+        combinedText += `Total Pembayaran: Rp ${(totalAll || 0).toLocaleString()}\n`;
+        combinedText += `Metode Pembayaran: ${paymentMethod}\n`;
+        combinedText += `--------------------------------\n`;
+
+        fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subject: `PESANAN BARU - INDOMI NITE - ${finalName}`,
+            text: combinedText,
+            html: combinedText.replace(/\n/g, "<br/>"),
+          }),
+        }).catch(console.error);
+      }
+    }
   };
 
   const handleCancelOrder = async (orderId: string) => {
+    // Check if it's a demo order
+    const isDemoOrder = demoOrders.find(
+      (o) => String(o.id) === String(orderId),
+    );
+    if (isDemoOrder) {
+      setDemoOrders((prev) =>
+        prev.map((o) =>
+          String(o.id) === String(orderId)
+            ? { ...o, status: "dibatalkan" as const }
+            : o,
+        ),
+      );
+      showNotification("Pesanan DUMMY telah dibatalkan.");
+      return;
+    }
+
     const order = orders.find(
       (o) => String(o.id) === String(orderId) || o.firebaseKey === orderId,
     );
@@ -2272,13 +2431,19 @@ export default function App() {
       try {
         const orderRef = doc(db, "orders", actualId);
         await updateDoc(orderRef, { status: "dibatalkan" });
-        if (order && order.status !== "dibatalkan" && order.status !== "selesai") {
+        if (
+          order &&
+          order.status !== "dibatalkan" &&
+          order.status !== "selesai"
+        ) {
           const today = new Date();
           const dStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
           const qCounterRef = doc(db, "counters", "completed_" + dStr);
           try {
             await setDoc(qCounterRef, { count: increment(1) }, { merge: true });
-          } catch(e) { console.warn("Failed", e); }
+          } catch (e) {
+            console.warn("Failed", e);
+          }
         }
       } catch (err) {
         handleFirestoreError(err, OperationType.WRITE, "orders");
@@ -2311,6 +2476,20 @@ export default function App() {
     rating: number,
     feedback: string,
   ) => {
+    // Check if it's demo order
+    const isDemoOrder = demoOrders.find(
+      (o) => String(o.id) === String(orderId),
+    );
+    if (isDemoOrder) {
+      setDemoOrders((prev) =>
+        prev.map((o) =>
+          String(o.id) === String(orderId) ? { ...o, rating, feedback } : o,
+        ),
+      );
+      showNotification("Terima kasih atas penilaian Anda! (DUMMY)");
+      return;
+    }
+
     // Optimistic update
     const updatedOrders = orders.map((o) =>
       String(o.id) === String(orderId) || o.firebaseKey === orderId
@@ -2364,6 +2543,18 @@ export default function App() {
     console.log("--- Update Order Status Start ---");
     console.log("Updating order ID:", orderId, "to status:", status);
 
+    // Check if it's a demo order
+    const demoOrder = demoOrders.find((o) => String(o.id) === String(orderId));
+    if (demoOrder) {
+      setDemoOrders((prev) =>
+        prev.map((o) =>
+          String(o.id) === String(orderId) ? { ...o, status } : o,
+        ),
+      );
+      showNotification(`Status pesanan DUMMY berhasil diperbarui (${status})`);
+      return;
+    }
+
     const order = orders.find(
       (o) => String(o.id) === String(orderId) || o.firebaseKey === orderId,
     );
@@ -2403,13 +2594,19 @@ export default function App() {
 
         await updateDoc(orderRef, { status });
 
-        if ((status === "selesai" || status === "dibatalkan") && order.status !== "selesai" && order.status !== "dibatalkan") {
+        if (
+          (status === "selesai" || status === "dibatalkan") &&
+          order.status !== "selesai" &&
+          order.status !== "dibatalkan"
+        ) {
           const today = new Date();
           const dStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
           const qCounterRef = doc(db, "counters", "completed_" + dStr);
           try {
             await setDoc(qCounterRef, { count: increment(1) }, { merge: true });
-          } catch(e) { console.warn("Failed to update queue counter", e); }
+          } catch (e) {
+            console.warn("Failed to update queue counter", e);
+          }
         }
 
         const updatedOrders = orders.map((o) =>
@@ -2452,6 +2649,20 @@ export default function App() {
   };
 
   const handleEditOrder = async (orderId: string, updatedData: any) => {
+    // Check if it's a demo order
+    const isDemoOrder = demoOrders.find(
+      (o) => String(o.id) === String(orderId),
+    );
+    if (isDemoOrder) {
+      setDemoOrders((prev) =>
+        prev.map((o) =>
+          String(o.id) === String(orderId) ? { ...o, ...updatedData } : o,
+        ),
+      );
+      showNotification("Pesanan DUMMY berhasil diperbarui");
+      return;
+    }
+
     const order = orders.find(
       (o) => String(o.id) === String(orderId) || o.firebaseKey === orderId,
     );
@@ -2510,6 +2721,26 @@ export default function App() {
   const handleDeleteOrder = async (orderId: string | string[]) => {
     const idsToDelete = Array.isArray(orderId) ? orderId : [orderId];
 
+    // Handle demo orders
+    const demoIds = idsToDelete.filter((id) =>
+      demoOrders.some((o) => String(o.id) === String(id)),
+    );
+    if (demoIds.length > 0) {
+      setDemoOrders((prev) =>
+        prev.map((o) =>
+          demoIds.includes(String(o.id)) ? { ...o, isDeleted: true } : o,
+        ),
+      );
+      if (demoIds.length === idsToDelete.length) {
+        showNotification(
+          Array.isArray(orderId)
+            ? `${idsToDelete.length} pesanan DUMMY berhasil dihapus ke sampah`
+            : "Pesanan DUMMY berhasil dihapus ke sampah",
+        );
+        return;
+      }
+    }
+
     if (isFirebaseConfigured) {
       try {
         const batch = writeBatch(db);
@@ -2545,6 +2776,20 @@ export default function App() {
   };
 
   const handleRestoreOrder = async (orderId: string) => {
+    // Check if it's a demo order
+    const isDemoOrder = demoOrders.find(
+      (o) => String(o.id) === String(orderId),
+    );
+    if (isDemoOrder) {
+      setDemoOrders((prev) =>
+        prev.map((o) =>
+          String(o.id) === String(orderId) ? { ...o, isDeleted: false } : o,
+        ),
+      );
+      showNotification("Pesanan DUMMY berhasil dipulihkan");
+      return;
+    }
+
     if (isFirebaseConfigured) {
       try {
         const order = orders.find(
@@ -2570,6 +2815,18 @@ export default function App() {
   };
 
   const handlePermanentDelete = async (orderId: string) => {
+    // Check if it's a demo order
+    const isDemoOrder = demoOrders.find(
+      (o) => String(o.id) === String(orderId),
+    );
+    if (isDemoOrder) {
+      setDemoOrders((prev) =>
+        prev.filter((o) => String(o.id) !== String(orderId)),
+      );
+      showNotification("Pesanan DUMMY berhasil dihapus permanen");
+      return;
+    }
+
     if (isFirebaseConfigured) {
       try {
         const order = orders.find(
@@ -2594,7 +2851,6 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-
       {showExitConfirmation && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
           <div className="bg-white rounded-3xl p-8 shadow-2xl w-full max-w-sm text-center">
@@ -2660,7 +2916,7 @@ export default function App() {
               totalRevenue={totalRevenue}
               revenueToday={revenueToday}
               totalOrders={totalOrders}
-              orders={orders}
+              orders={allOrdersForOwner}
               feedbacks={feedbacks}
               showNotification={showNotification}
               setOrders={setOrders}
@@ -2805,6 +3061,8 @@ export default function App() {
               isAuthReady={isAuthReady}
               dismissedNotifs={dismissedNotifs}
               onDismissNotif={handleDismissNotif}
+              showDemoOrdersOwner={showDemoOrdersOwner}
+              setShowDemoOrdersOwner={setShowDemoOrdersOwner}
             />
           )}
 
@@ -2865,7 +3123,7 @@ export default function App() {
               customerEmail={customerEmail}
               onCheckout={() => setView("checkout")}
               onSelectItem={handleSelectItem}
-              hasActiveOrder={orders.some(
+              hasActiveOrder={[...demoOrders, ...orders].some(
                 (o) =>
                   !o.isDeleted &&
                   o.status !== "selesai" &&
@@ -2892,27 +3150,14 @@ export default function App() {
                 setCustomerName(name);
                 setCustomerPhone(phone);
                 setCustomerEmail(email);
-                if (isOwnerEmail(email)) {
-                  setUserRole("owner");
-                  if (currentUser?.isAnonymous && isFirebaseConfigured) {
-                    setDoc(doc(db, "owner_sessions", currentUser.uid), {
-                      secret: "IndominiteSecret2026",
-                      email: OWNER_EMAILS[0],
-                      timestamp: serverTimestamp(),
-                    }).catch((e) =>
-                      console.error("Auto-session on update failed", e),
-                    );
-                  }
-                } else {
-                  setUserRole("customer");
-                }
+                updateRoleAndDemo(email, currentUser);
               }}
               onLogout={handleLogout}
               onLogin={handleLogin}
               onOwnerLogin={handleOwnerLogin}
               currentUser={currentUser}
               onBackToWelcome={() => setView("welcome")}
-              orders={orders}
+              orders={[...demoOrders, ...orders]}
               onRemoveFromCart={handleRemoveFromCart}
               onEditCartItem={handleEditCartItem}
               onRateOrder={handleRateOrder}
@@ -2924,6 +3169,8 @@ export default function App() {
               setUserRole={setUserRole}
               dismissedNotifs={dismissedNotifs}
               onDismissNotif={handleDismissNotif}
+              isDemoMode={isDemoMode}
+              setIsDemoMode={setIsDemoMode}
             />
           )}
           {view === "detail" && (
@@ -2990,8 +3237,8 @@ export default function App() {
               onPaymentMethodChange={setPaymentMethod}
               cart={cart}
               onBack={() => setView("home")}
-              onOrderPlaced={(name, phone, email, addr) =>
-                handlePlaceOrder(name, phone, email, addr)
+              onOrderPlaced={(name, phone, email, addr, isTestChecked) =>
+                handlePlaceOrder(name, phone, email, addr, isTestChecked)
               }
               customerName={customerName}
               customerPhone={customerPhone}
@@ -3000,20 +3247,7 @@ export default function App() {
                 setCustomerName(name);
                 setCustomerPhone(phone);
                 setCustomerEmail(email);
-                if (isOwnerEmail(email)) {
-                  setUserRole("owner");
-                  if (currentUser?.isAnonymous && isFirebaseConfigured) {
-                    setDoc(doc(db, "owner_sessions", currentUser.uid), {
-                      secret: "IndominiteSecret2026",
-                      email: OWNER_EMAILS[0],
-                      timestamp: serverTimestamp(),
-                    }).catch((e) =>
-                      console.error("Auto-session on update failed", e),
-                    );
-                  }
-                } else {
-                  setUserRole("customer");
-                }
+                updateRoleAndDemo(email, currentUser);
               }}
             />
           )}
@@ -3024,12 +3258,14 @@ export default function App() {
                 setHomeActiveTab(tab);
                 setView("home");
               }}
-              orders={orders}
+              orders={[...demoOrders, ...orders]}
               customerName={customerName}
               currentUser={currentUser}
               cart={cart}
               onRateOrder={handleRateOrder}
               onNewOrder={() => setShowAppFeedbackModal(true)}
+              onCancelOrder={handleCancelOrder}
+              onDeleteOrder={handleDeleteOrder}
               isFirebaseConfigured={isFirebaseConfigured}
             />
           )}
@@ -3052,9 +3288,6 @@ export default function App() {
           />
         </div>
       </div>
-
-      
-
     </ErrorBoundary>
   );
 }
@@ -3181,6 +3414,8 @@ function OwnerScreen({
   isAuthReady,
   dismissedNotifs,
   onDismissNotif,
+  showDemoOrdersOwner,
+  setShowDemoOrdersOwner,
 }: {
   inventory: any[];
   totalRevenue: number;
@@ -3222,11 +3457,19 @@ function OwnerScreen({
   isAuthReady: boolean;
   dismissedNotifs: string[];
   onDismissNotif: (id: string) => void;
+  showDemoOrdersOwner: boolean;
+  setShowDemoOrdersOwner: (show: boolean) => void;
 }) {
   console.log("OwnerScreen rendering");
 
   const [activeTab, setActiveTab] = useState<
-    "beranda" | "laporan" | "stok" | "pengaturan" | "rating" | "sampah" | "kuesioner"
+    | "beranda"
+    | "laporan"
+    | "stok"
+    | "pengaturan"
+    | "rating"
+    | "sampah"
+    | "kuesioner"
   >(() => {
     return getLocalStorageItem("owner_active_tab", "beranda") as any;
   });
@@ -3238,8 +3481,11 @@ function OwnerScreen({
   // One-time un-gapper removed as it causes confusion in multi-user environment
   // and affects existing receipts already given to customers.
 
-  const [aiKuesionerSummary, setAiKuesionerSummary] = useState<string | null>(null);
-  const [isGeneratingKuesionerSummary, setIsGeneratingKuesionerSummary] = useState(false);
+  const [aiKuesionerSummary, setAiKuesionerSummary] = useState<string | null>(
+    null,
+  );
+  const [isGeneratingKuesionerSummary, setIsGeneratingKuesionerSummary] =
+    useState(false);
 
   const [viewDetail, setViewDetail] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -4031,9 +4277,9 @@ function OwnerScreen({
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [editingStocks, setEditingStocks] = useState<{ [id: number]: string }>(
-    {},
-  );
+  const [editingStocks, setEditingStocks] = useState<{
+    [id: number]: string;
+  }>({});
 
   const [reportFilterType, setReportFilterType] = useState<
     "hari" | "minggu" | "bulan" | "semua"
@@ -4097,7 +4343,7 @@ function OwnerScreen({
   );
   const [feedbackToDelete, setFeedbackToDelete] = useState<{
     id: string;
-    type: "Order" | "Aplikasi";
+    type: "Order" | "Aplikasi" | "Kuesioner";
   } | null>(null);
 
   const [isEditNominalModalOpen, setIsEditNominalModalOpen] = useState(false);
@@ -5090,7 +5336,7 @@ function OwnerScreen({
       });
 
       if (response.text) {
-        setAiKuesionerSummary(response.text.replace(/<br\s*\/?>/gi, '\n'));
+        setAiKuesionerSummary(response.text.replace(/<br\s*\/?>/gi, "\n"));
       }
     } catch (e) {
       console.error(e);
@@ -5183,7 +5429,10 @@ function OwnerScreen({
   const handleDeleteFeedback = async () => {
     if (!feedbackToDelete) return;
     try {
-      if (feedbackToDelete.type === "Aplikasi") {
+      if (
+        feedbackToDelete.type === "Aplikasi" ||
+        feedbackToDelete.type === "Kuesioner"
+      ) {
         if (isFirebaseConfigured) {
           await deleteDoc(doc(db, "app_feedback", feedbackToDelete.id));
         }
@@ -5425,15 +5674,6 @@ function OwnerScreen({
 
   return (
     <div className="flex flex-col h-full bg-[#F5F2EA] relative">
-      {!isFirebaseConfigured && (
-        <div className="bg-red-500 text-white px-6 py-2 text-[10px] font-bold text-center uppercase tracking-widest z-50">
-          <p>Firebase Belum Terhubung</p>
-          <p className="opacity-70 mt-0.5">
-            Pastikan semua Secrets (API Key, URL, dll) sudah diisi dengan benar
-            di menu Settings.
-          </p>
-        </div>
-      )}
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center justify-between bg-white shadow-sm z-10 relative">
         <button
@@ -5446,14 +5686,22 @@ function OwnerScreen({
             <div className="w-5 h-0.5 bg-[#3D2B1F]"></div>
           </div>
         </button>
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg font-bold text-[#3D2B1F]">Indomi Nite</h1>
-          <div className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
-            <div className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-[8px] font-bold text-red-500 uppercase tracking-widest">
-              Live
-            </span>
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold text-[#3D2B1F]">Indomi Nite</h1>
+            <div className="flex items-center gap-1 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20">
+              <div className="h-1.5 w-1.5 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-[8px] font-bold text-red-500 uppercase tracking-widest">
+                Live
+              </span>
+            </div>
           </div>
+          <button
+            onClick={() => setShowDemoOrdersOwner(!showDemoOrdersOwner)}
+            className={`mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${showDemoOrdersOwner ? "bg-orange-100 text-orange-600 border-orange-200" : "bg-stone-100 text-stone-500 border-stone-200"}`}
+          >
+            {showDemoOrdersOwner ? "Mode Demo" : "Mode Produksi"}
+          </button>
         </div>
         <button
           onClick={() => setIsNotificationsOpen(true)}
@@ -5952,6 +6200,7 @@ function OwnerScreen({
                             },
                             quantity: 1,
                             toppings: [],
+                            totalPrice: 6000,
                           },
                         ];
                         updateEditingOrderItems(newItems);
@@ -6939,7 +7188,7 @@ function OwnerScreen({
                     timestamp: o.timestamp ? new Date(o.timestamp) : new Date(),
                   })),
                 ...feedbacks
-                  .filter(f => f.type !== "Kuesioner")
+                  .filter((f) => f.type !== "Kuesioner")
                   .map((f) => ({
                     id: f.id || "",
                     type: (f.type || "Aplikasi") as any,
@@ -7036,7 +7285,7 @@ function OwnerScreen({
                   Hasil Kuesioner
                 </h2>
               </div>
-              {feedbacks.filter(f => f.type === "Kuesioner").length > 0 && (
+              {feedbacks.filter((f) => f.type === "Kuesioner").length > 0 && (
                 <button
                   onClick={handleGenerateKuesionerSummary}
                   disabled={isGeneratingKuesionerSummary}
@@ -7103,7 +7352,10 @@ function OwnerScreen({
                             onClick={() =>
                               setFeedbackToDelete({
                                 id: item.id,
-                                type: item.type,
+                                type: item.type as
+                                  | "Aplikasi"
+                                  | "Order"
+                                  | "Kuesioner",
                               })
                             }
                             className="text-red-400 hover:text-red-600 transition-colors"
@@ -7113,21 +7365,23 @@ function OwnerScreen({
                           </button>
                         </div>
                       </div>
-                      
+
                       <div className="text-sm text-[#3D2B1F]/80 space-y-2 mt-4">
-                         {Object.entries(kData).map(([k, v]) => (
-                            <div key={k} className="bg-[#F5F2EA] p-3 rounded-xl">
-                              <span className="block text-xs font-bold text-[#3D2B1F]/60 uppercase tracking-wide mb-1 flex items-center gap-2">
-                                 {k === 'q1' && "1. Mudah Menemukan Menu"}
-                                 {k === 'q2' && "2. Tampilan & Desain"}
-                                 {k === 'q3' && "3. Kejelasan Harga"}
-                                 {k === 'q4' && "4. Kendala Teknis"}
-                                 {k === 'q5' && "5. Alur Pemesanan"}
-                                 {k === 'q6' && "6. Saran & Masukan"}
-                              </span>
-                              <p className="font-medium text-[#3D2B1F]">{String(v)}</p>
-                            </div>
-                         ))}
+                        {Object.entries(kData).map(([k, v]) => (
+                          <div key={k} className="bg-[#F5F2EA] p-3 rounded-xl">
+                            <span className="block text-xs font-bold text-[#3D2B1F]/60 uppercase tracking-wide mb-1 flex items-center gap-2">
+                              {k === "q1" && "1. Mudah Menemukan Menu"}
+                              {k === "q2" && "2. Tampilan & Desain"}
+                              {k === "q3" && "3. Kejelasan Harga"}
+                              {k === "q4" && "4. Kendala Teknis"}
+                              {k === "q5" && "5. Alur Pemesanan"}
+                              {k === "q6" && "6. Saran & Masukan"}
+                            </span>
+                            <p className="font-medium text-[#3D2B1F]">
+                              {String(v)}
+                            </p>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );
@@ -7229,7 +7483,11 @@ function OwnerScreen({
                           })()
                         : parseDateString(reportFilterDate).toLocaleDateString(
                             "id-ID",
-                            { day: "numeric", month: "long", year: "numeric" },
+                            {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            },
                           )}
                   </button>
                 )}
@@ -7279,7 +7537,10 @@ function OwnerScreen({
                         <span className="font-bold text-[#3D2B1F] text-sm">
                           {parseDateString(reportFilterDate).toLocaleDateString(
                             "id-ID",
-                            { month: "long", year: "numeric" },
+                            {
+                              month: "long",
+                              year: "numeric",
+                            },
                           )}
                         </span>
                         <button
@@ -9738,7 +9999,10 @@ function OwnerScreen({
                       type="number"
                       value={newItem.min}
                       onChange={(e) =>
-                        setNewItem({ ...newItem, min: Number(e.target.value) })
+                        setNewItem({
+                          ...newItem,
+                          min: Number(e.target.value),
+                        })
                       }
                       className="w-full bg-[#F5F2EA] rounded-xl px-4 py-3 text-sm font-bold text-[#3D2B1F] outline-none"
                     />
@@ -9751,7 +10015,10 @@ function OwnerScreen({
                       type="number"
                       value={newItem.max}
                       onChange={(e) =>
-                        setNewItem({ ...newItem, max: Number(e.target.value) })
+                        setNewItem({
+                          ...newItem,
+                          max: Number(e.target.value),
+                        })
                       }
                       className="w-full bg-[#F5F2EA] rounded-xl px-4 py-3 text-sm font-bold text-[#3D2B1F] outline-none"
                     />
@@ -10052,6 +10319,8 @@ function HomeScreen({
   setUserRole,
   dismissedNotifs,
   onDismissNotif,
+  isDemoMode,
+  setIsDemoMode,
 }: {
   address: string;
   addresses: any[];
@@ -10091,6 +10360,8 @@ function HomeScreen({
   setUserRole: (role: "guest" | "customer" | "owner") => void;
   dismissedNotifs: string[];
   onDismissNotif: (id: string) => void;
+  isDemoMode?: boolean;
+  setIsDemoMode?: (val: boolean) => void;
 }) {
   const [notification, setNotification] = useState<string | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -10100,6 +10371,7 @@ function HomeScreen({
   const [editingCartItemIndex, setEditingCartItemIndex] = useState<
     number | null
   >(null);
+  const [headerClickCount, setHeaderClickCount] = useState(0);
 
   useEffect(() => {
     if (profileSubView) {
@@ -10762,7 +11034,10 @@ function HomeScreen({
                 <div className="space-y-4 pb-36">
                   {[
                     { name: "Pengaturan Akun", icon: <Settings size={20} /> },
-                    { name: "Alamat Pengantaran", icon: <MapPin size={20} /> },
+                    {
+                      name: "Alamat Pengantaran",
+                      icon: <MapPin size={20} />,
+                    },
                     {
                       name: "Metode Pembayaran",
                       icon: <CreditCard size={20} />,
@@ -10883,6 +11158,13 @@ function HomeScreen({
                         onChange={async (e) => {
                           const newEmail = e.target.value;
                           setUserProfile({ ...userProfile, email: newEmail });
+                          const lower = newEmail.toLowerCase();
+                          if (lower === "indominitemode@gmail.com" && setIsDemoMode) {
+                            setIsDemoMode(true);
+                          } else if (lower === "indominite@gmail.com" && setIsDemoMode) {
+                            setIsDemoMode(false);
+                          }
+
                           if (isOwnerEmail(newEmail)) {
                             setUserRole("owner");
                             showNotification("Akses Owner Diaktifkan");
@@ -11031,35 +11313,43 @@ function HomeScreen({
                   </div>
                 )}
 
-                                {profileSubView === "Kuesioner" && (
+                {profileSubView === "Kuesioner" && (
                   <div className="space-y-6 pb-36">
                     <div className="bg-white p-6 rounded-3xl border border-[#3D2B1F]/5 shadow-sm">
                       <div className="space-y-4">
                         <KuesionerForm
-                           onSubmit={async (data) => {
-                             showNotification("Terima kasih, masukan Anda sangat berarti!");
-                             if (isFirebaseConfigured) {
-                               try {
-                                 await addDoc(collection(db, "app_feedback"), {
-                                    type: "Kuesioner",
-                                    comment: JSON.stringify(data),
-                                    rating: 5,
-                                    timestamp: serverTimestamp(),
-                                    userEmail: currentUser?.email || customerEmail || "anon",
-                                    userName: currentUser?.displayName || customerName || "Pelanggan"
-                                 });
-                               } catch(e) {
-                                 console.warn("Failed to save Kuesioner", e);
-                               }
-                             }
-                             setProfileSubView(null);
-                           }}
+                          onSubmit={async (data) => {
+                            showNotification(
+                              "Terima kasih, masukan Anda sangat berarti!",
+                            );
+                            if (isFirebaseConfigured) {
+                              try {
+                                await addDoc(collection(db, "app_feedback"), {
+                                  type: "Kuesioner",
+                                  comment: JSON.stringify(data),
+                                  rating: 5,
+                                  timestamp: serverTimestamp(),
+                                  userEmail:
+                                    currentUser?.email ||
+                                    customerEmail ||
+                                    "anon",
+                                  userName:
+                                    currentUser?.displayName ||
+                                    customerName ||
+                                    "Pelanggan",
+                                });
+                              } catch (e) {
+                                console.warn("Failed to save Kuesioner", e);
+                              }
+                            }
+                            setProfileSubView(null);
+                          }}
                         />
                       </div>
                     </div>
                   </div>
                 )}
-{profileSubView === "Pusat Bantuan" && (
+                {profileSubView === "Pusat Bantuan" && (
                   <div className="space-y-4 pb-36">
                     <div className="bg-white p-6 rounded-3xl border border-[#3D2B1F]/5 shadow-sm text-center">
                       <div className="h-20 w-20 rounded-full bg-[#3D2B1F]/5 flex items-center justify-center text-[#3D2B1F] mx-auto mb-4">
@@ -11388,6 +11678,7 @@ function CheckoutScreen({
     phone: string,
     email: string,
     addr: string,
+    isTestChecked: boolean,
   ) => void;
   customerName: string;
   customerPhone: string;
@@ -11397,6 +11688,7 @@ function CheckoutScreen({
   const [name, setName] = useState(customerName);
   const [phone, setPhone] = useState(customerPhone);
   const [email, setEmail] = useState(customerEmail);
+  const [isTestMode, setIsTestMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isQrExpanded, setIsQrExpanded] = useState(false);
@@ -11767,7 +12059,7 @@ function CheckoutScreen({
               }
               setIsPlacingOrder(true);
               onUpdateProfile(name, phone, email);
-              onOrderPlaced(name, phone, email, address);
+              onOrderPlaced(name, phone, email, address, isTestMode);
             }}
             disabled={isPlacingOrder}
             whileHover={{ scale: isPlacingOrder ? 1 : 1.02 }}
@@ -12112,6 +12404,8 @@ function OrdersScreen({
   currentUser,
   onRateOrder,
   onNewOrder,
+  onCancelOrder,
+  onDeleteOrder,
   isFirebaseConfigured,
 }: {
   onBack: () => void;
@@ -12122,6 +12416,8 @@ function OrdersScreen({
   currentUser: any;
   onRateOrder: (orderId: string, rating: number, feedback: string) => void;
   onNewOrder?: () => void;
+  onCancelOrder?: (orderId: string) => void;
+  onDeleteOrder?: (orderId: string | string[]) => void;
   isFirebaseConfigured?: boolean;
 }) {
   const [now, setNow] = useState(Date.now());
@@ -12131,11 +12427,14 @@ function OrdersScreen({
     if (isFirebaseConfigured) {
       const today = new Date();
       const dStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-      const unsub = onSnapshot(doc(db, "counters", "completed_" + dStr), (snap) => {
-        if (snap.exists()) {
-          setGlobalCompletedCount(snap.data().count || 0);
-        }
-      });
+      const unsub = onSnapshot(
+        doc(db, "counters", "completed_" + dStr),
+        (snap) => {
+          if (snap.exists()) {
+            setGlobalCompletedCount(snap.data().count || 0);
+          }
+        },
+      );
       return () => unsub();
     }
   }, [isFirebaseConfigured]);
@@ -12238,33 +12537,57 @@ function OrdersScreen({
               // Use the most recent or first active order for the general status/timer
               const primaryOrder = activeOrders[0];
 
-              const startTime = new Date(primaryOrder.timestamp).getTime();
-              // Prevent negative elapsed time due to clock skew between server and client
+              const primaryTime =
+                primaryOrder.timestamp instanceof Date
+                  ? primaryOrder.timestamp.getTime()
+                  : (primaryOrder.timestamp as any)?.toDate?.()?.getTime() ||
+                    new Date(primaryOrder.timestamp).getTime();
+              const startTime = primaryTime;
               const elapsed = Math.max(0, (now - startTime) / 1000);
-              
-              const queueNum = parseInt(primaryOrder.orderNumber?.replace(/[^0-9]/g, "") || "1", 10) || 1;
-              const itemsCount = primaryOrder.items?.reduce((acc, item) => acc + (item.quantity || 1), 0) || 1;
-              
-              // More realistic base time: base 10 mins, plus 3 mins for every 2 additional items
-              const baseMins = 10 + Math.floor(Math.max(0, itemsCount - 1) / 2) * 3;
-              const queueAhead = Math.max(0, queueNum - globalCompletedCount - 1);
-              const queueMins = queueAhead * 3;
-              const totalMins = baseMins + queueMins;
-              
-              const duration = totalMins * 60; 
-              const isOvertime = elapsed > duration;
-              const displaySeconds = isOvertime ? elapsed - duration : duration - elapsed;
+
+              const isDemo =
+                String(primaryOrder.id).includes("DEMO") ||
+                primaryOrder.isDemo ||
+                String(primaryOrder.orderNumber) === "9999";
+
+              // Count orders that were placed BEFORE this primaryOrder and are still active
+              const queuedBeforeMeCount = orders.filter((o) => {
+                const t =
+                  o.timestamp instanceof Date
+                    ? o.timestamp.getTime()
+                    : (o.timestamp as any)?.toDate?.()?.getTime() ||
+                      new Date(o.timestamp).getTime();
+                return (
+                  o.id !== primaryOrder.id &&
+                  t < primaryTime &&
+                  o.status !== "selesai" &&
+                  o.status !== "dibatalkan" &&
+                  !o.isDeleted
+                );
+              }).length;
+
+              const queueAhead = queuedBeforeMeCount;
+
+              // Setiap pesanan memiliki waktu rata-rata 10 menit
+              const totalMins = (queueAhead + 1) * 10;
+
+              const duration = totalMins * 60;
               const remaining = Math.max(0, duration - elapsed);
+              const isOvertime = remaining === 0;
+              const displaySeconds = isOvertime
+                ? elapsed - duration
+                : remaining;
               const orderStatus = primaryOrder.status;
 
               // Format time
               const hours = Math.floor(displaySeconds / 3600);
               const mins = Math.floor((displaySeconds % 3600) / 60);
               const secs = Math.floor(displaySeconds % 60);
-              const sign = isOvertime ? "+" : "";
-              const formattedTime = hours > 0
-                ? `${sign}${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-                : `${sign}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+              const sign = "";
+              const formattedTime =
+                hours > 0
+                  ? `${sign}${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+                  : `${sign}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 
               return (
                 <div className="flex flex-col items-center">
@@ -12284,8 +12607,10 @@ function OrdersScreen({
                   <div className="w-full px-6 flex flex-col items-center">
                     {/* Circular Countdown Timer */}
                     <div className="relative w-56 h-56 flex items-center justify-center mb-8">
-                      <div className={`absolute inset-0 bg-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${isOvertime ? 'animate-pulse' : ''}`}></div>
-                      
+                      <div
+                        className={`absolute inset-0 bg-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.04)] ${isOvertime ? "animate-pulse" : ""}`}
+                      ></div>
+
                       <svg
                         viewBox="0 0 224 224"
                         className="absolute inset-0 w-full h-full transform -rotate-90"
@@ -12303,14 +12628,17 @@ function OrdersScreen({
                           cx="112"
                           cy="112"
                           r="100"
-                          stroke={isOvertime ? "#f59e0b" : "#3D2B1F"}
+                          stroke="#3D2B1F"
                           strokeWidth="6"
                           fill="transparent"
                           strokeDasharray={2 * Math.PI * 100}
                           strokeDashoffset={
                             isOvertime
                               ? 0
-                              : 2 * Math.PI * 100 * (1 - (duration > 0 ? remaining / duration : 1))
+                              : 2 *
+                                Math.PI *
+                                100 *
+                                (1 - (duration > 0 ? remaining / duration : 1))
                           }
                           strokeLinecap="round"
                           className="transition-all duration-1000 ease-linear"
@@ -12318,38 +12646,30 @@ function OrdersScreen({
                       </svg>
 
                       <div className="flex flex-col items-center z-10">
-                        <span className={`text-3xl font-sans font-bold tracking-wider ${isOvertime ? 'text-amber-600' : 'text-[#3D2B1F]'}`}>
+                        <span className="text-3xl font-sans font-bold tracking-wider text-[#3D2B1F]">
                           {formattedTime}
                         </span>
                         <span className="text-xs font-medium text-[#3D2B1F]/60 mt-1 text-center px-4">
-                          {isOvertime 
-                            ? (orderStatus === 'diterima' ? 'Masih dalam antrian' : 'Sedang dimasak')
-                            : (queueAhead > 0 
-                              ? `Tersisa ${queueAhead} antrean di depanmu` 
-                              : 'Sedang disiapkan')
-                          }
+                          {isOvertime
+                            ? orderStatus === "diterima"
+                              ? "Masih dalam antrian"
+                              : "Sedang dimasak"
+                            : queueAhead > 0
+                              ? `Tersisa ${queueAhead} antrean di depanmu`
+                              : "Sedang disiapkan"}
                         </span>
                       </div>
                     </div>
 
-                    {isOvertime && (
-                      <div className="mb-6 w-full px-4 py-3 bg-amber-50 rounded-2xl border border-amber-200 shadow-sm text-center animate-fade-in">
-                        <span className="text-amber-700 text-sm font-medium">
-                          {orderStatus === 'diterima' 
-                            ? "Pesanan Anda masih dalam antrean. Mohon tunggu sebentar lagi ya!"
-                            : "Pesanan Anda sedang dalam proses penyelesaian. Mohon tunggu sebentar lagi ya!"}
-                        </span>
-                      </div>
-                    )}
-
                     {/* Status Text */}
                     <div className="w-full text-center mb-8">
-                      <h3 className="text-xl font-sans font-bold text-[#3D2B1F] mb-2">
+                      <h3 className="text-xl font-sans font-bold text-[#3D2B1F] mb-1">
                         {orderStatus === "diterima" && "Pesanan Diterima"}
                         {orderStatus === "dimasak" && "Sedang Dimasak"}
                         {orderStatus === "diantar" && "Sedang Diantar"}
                       </h3>
-                      <p className="text-sm text-[#3D2B1F]/60">
+
+                      <p className="text-sm text-[#3D2B1F]/60 mb-2">
                         {orderStatus === "diterima" &&
                           "Menunggu koki menyiapkan pesananmu."}
                         {orderStatus === "dimasak" &&
@@ -12357,6 +12677,14 @@ function OrdersScreen({
                         {orderStatus === "diantar" &&
                           "Kurir sedang menuju ke tempatmu."}
                       </p>
+
+                      {isOvertime && (
+                        <p className="text-[#3D2B1F] text-sm font-medium animate-fade-in">
+                          {orderStatus === "diterima"
+                            ? "Pesanan Anda masih dalam antrean. Mohon tunggu sebentar lagi ya!"
+                            : "Pesanan Anda sedang dalam proses penyelesaian. Mohon tunggu sebentar lagi ya!"}
+                        </p>
+                      )}
                     </div>
 
                     {/* Quote Box */}
@@ -12476,6 +12804,24 @@ function OrdersScreen({
                                 Rp {(order.total || 0).toLocaleString()}
                               </span>
                             </div>
+
+                            {(order.isDemo ||
+                              String(order.id).includes("DEMO")) &&
+                              order.status !== "selesai" &&
+                              order.status !== "dibatalkan" && (
+                                <div className="mt-6 flex justify-center">
+                                  <button
+                                    onClick={() =>
+                                      onDeleteOrder?.(
+                                        order.firebaseKey || order.id,
+                                      )
+                                    }
+                                    className="bg-red-50 text-red-600 px-6 py-2 rounded-full font-bold text-[10px] uppercase tracking-widest border border-red-200 hover:bg-red-100 transition-colors"
+                                  >
+                                    Hapus Pesanan (Demo)
+                                  </button>
+                                </div>
+                              )}
                           </div>
                         </div>
                       ))}
