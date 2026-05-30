@@ -1036,20 +1036,7 @@ function KuesionerForm({ onSubmit }: { onSubmit: (data: any) => void }) {
 }
 
 export default function App() {
-  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("demo") === "true") {
-      return true;
-    }
-    if (params.get("demo") === "false") {
-      return false;
-    }
-    return localStorage.getItem("app_isDemoMode") === "true";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("app_isDemoMode", isDemoMode.toString());
-  }, [isDemoMode]);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
 
   const [view, setView] = useState<View>(() => {
     try {
@@ -1388,13 +1375,8 @@ export default function App() {
     if (!email) return;
     const lower = email.toLowerCase();
 
-    if (lower === "indominitemode@gmail.com") {
-      setIsDemoMode(true);
-      showNotification("Mode Demo Diaktifkan");
-      setUserRole("owner");
-    } else if (lower === "indominite@gmail.com") {
+    if (lower === "indominitemode@gmail.com" || lower === "indominite@gmail.com" || lower === "innanifiddinillah@gmail.com") {
       setIsDemoMode(false);
-      showNotification("Mode Asli Diaktifkan");
       setUserRole("owner");
     } else if (isOwnerEmail(email)) {
       setUserRole("owner");
@@ -5850,12 +5832,6 @@ function OwnerScreen({
               </span>
             </div>
           </div>
-          <button
-            onClick={() => setShowDemoOrdersOwner(!showDemoOrdersOwner)}
-            className={`mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full border transition-colors ${showDemoOrdersOwner ? "bg-orange-100 text-orange-600 border-orange-200" : "bg-stone-100 text-stone-500 border-stone-200"}`}
-          >
-            {showDemoOrdersOwner ? "Mode Demo" : "Mode Produksi"}
-          </button>
         </div>
         <button
           onClick={() => setIsNotificationsOpen(true)}
@@ -11496,15 +11472,7 @@ function HomeScreen({
                           const newEmail = e.target.value;
                           setUserProfile({ ...userProfile, email: newEmail });
                           const lower = newEmail.toLowerCase();
-                          if (
-                            lower === "indominitemode@gmail.com" &&
-                            setIsDemoMode
-                          ) {
-                            setIsDemoMode(true);
-                          } else if (
-                            lower === "indominite@gmail.com" &&
-                            setIsDemoMode
-                          ) {
+                          if (setIsDemoMode) {
                             setIsDemoMode(false);
                           }
 
