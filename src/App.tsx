@@ -68,6 +68,7 @@ import {
   Wallet,
   CreditCard,
   CheckCircle,
+  XCircle,
   Circle,
   ShoppingBag,
   Minus,
@@ -193,6 +194,32 @@ export const getSequentialOrderNumber = (order: Order, orders: Order[]) => {
   });
 
   const index = sameDayOrders.findIndex(
+    (o) =>
+      (o.firebaseKey && o.firebaseKey === order.firebaseKey) ||
+      o.id === order.id,
+  );
+  if (index === -1) return "01";
+  return String(index + 1).padStart(2, "0");
+};
+
+export const getTransactionHistoryNumber = (order: Order, orders: Order[]) => {
+  const completedOrCancelled = orders.filter(
+    (o) => (o.status === "selesai" || o.status === "dibatalkan") && !o.isDeleted,
+  );
+
+  completedOrCancelled.sort((a, b) => {
+    const timeA =
+      a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp);
+    const timeB =
+      b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp);
+    const timeDiff = timeA.getTime() - timeB.getTime();
+    if (timeDiff !== 0) return timeDiff;
+    const aId = a.firebaseKey || a.id || "";
+    const bId = b.firebaseKey || b.id || "";
+    return aId.localeCompare(bId);
+  });
+
+  const index = completedOrCancelled.findIndex(
     (o) =>
       (o.firebaseKey && o.firebaseKey === order.firebaseKey) ||
       o.id === order.id,
@@ -957,13 +984,8 @@ function KuesionerForm({ onSubmit }: { onSubmit: (data: any) => void }) {
 
       <RadioGroup
         number="3"
-        label="Bagaimana penilaian Anda terhadap kejelasan informasi harga yang tertera di aplikasi?"
-        options={[
-          "Sangat Tidak Jelas",
-          "Kurang Jelas",
-          "Cukup Jelas",
-          "Sangat Jelas",
-        ]}
+        label="Seberapa mudah Anda dalam menambah, mengurangi, atau memeriksa item makanan di dalam keranjang belanja?"
+        options={["Sangat Sulit", "Sulit", "Cukup Mudah", "Sangat Mudah"]}
         current={q3}
         setVal={setQ3}
       />
@@ -1359,10 +1381,13 @@ export default function App() {
     }
   };
 
-  const updateRoleAndDemo = (email: string | null | undefined, userObj?: any) => {
+  const updateRoleAndDemo = (
+    email: string | null | undefined,
+    userObj?: any,
+  ) => {
     if (!email) return;
     const lower = email.toLowerCase();
-    
+
     if (lower === "indominitemode@gmail.com") {
       setIsDemoMode(true);
       showNotification("Mode Demo Diaktifkan");
@@ -2536,6 +2561,120 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const getInventoryDeductionsForOrder = (order: any) => {
+    const deductions: { [key: string]: number } = {};
+    if (!order || !order.items || !Array.isArray(order.items)) return deductions;
+
+    order.items.forEach((cartItem: any) => {
+      // Main Item
+      let mainItemId = "";
+      const nameLower = (cartItem.item?.name || "").toLowerCase();
+      
+      if (nameLower.includes("indomie goreng")) {
+        mainItemId = "1";
+      } else if (nameLower.includes("indomie soto") || nameLower.includes("soto")) {
+        mainItemId = "10";
+      } else if (nameLower.includes("indomie rendang")) {
+        mainItemId = "11";
+      } else if (nameLower === "telur gulung") {
+        deductions["2"] = (deductions["2"] || 0) + cartItem.quantity; // Telur
+      } else if (nameLower === "telur gulung sosis") {
+        deductions["2"] = (deductions["2"] || 0) + cartItem.quantity; // Telur
+        deductions["9"] = (deductions["9"] || 0) + cartItem.quantity; // Sosis
+      }
+
+      if (mainItemId) {
+        deductions[mainItemId] = (deductions[mainItemId] || 0) + cartItem.quantity;
+      }
+
+      // Toppings
+      if (cartItem.toppings && Array.isArray(cartItem.toppings)) {
+        cartItem.toppings.forEach((topping: any) => {
+          const toppingStr = typeof topping === "string" ? topping : String(topping.name || topping);
+          if (toppingStr.includes("Telur"))
+            deductions["2"] = (deductions["2"] || 0) + cartItem.quantity;
+          if (toppingStr.includes("Sosis"))
+            deductions["9"] = (deductions["9"] || 0) + cartItem.quantity;
+        });
+      }
+
+      // Packaging
+      if (nameLower.includes("indomie soto") || nameLower.includes("soto")) {
+        deductions["13"] = (deductions["13"] || 0) + cartItem.quantity; // Bowl
+        deductions["14"] = (deductions["14"] || 0) + cartItem.quantity; // Sendok
+        deductions["6"] = (deductions["6"] || 0) + cartItem.quantity; // Garpu
+        deductions["12"] = (deductions["12"] || 0) + cartItem.quantity; // Plastik
+      } else if (
+        nameLower.includes("indomie goreng") ||
+        nameLower.includes("indomie rendang")
+      ) {
+        deductions["5"] = (deductions["5"] || 0) + cartItem.quantity; // Packaging Box Kertas
+        deductions["6"] = (deductions["6"] || 0) + cartItem.quantity; // Garpu
+        deductions["12"] = (deductions["12"] || 0) + cartItem.quantity; // Plastik
+      } else if (
+        nameLower === "telur gulung" ||
+        nameLower === "telur gulung sosis"
+      ) {
+        deductions["4"] = (deductions["4"] || 0) + cartItem.quantity; // Tusuk Sate
+        deductions["12"] = (deductions["12"] || 0) + cartItem.quantity; // Plastik
+      }
+    });
+
+    return deductions;
+  };
+
+  const updateInventoryStockForStatusChange = async (
+    order: any,
+    oldStatus: string,
+    newStatus: string,
+  ) => {
+    if (oldStatus === newStatus) return;
+
+    const deductions = getInventoryDeductionsForOrder(order);
+    if (Object.keys(deductions).length === 0) return;
+
+    let modifier = 0;
+    if (oldStatus !== "dibatalkan" && newStatus === "dibatalkan") {
+      modifier = 1; // Restore stock
+    } else if (oldStatus === "dibatalkan" && newStatus !== "dibatalkan") {
+      modifier = -1; // Deduct stock
+    }
+
+    if (modifier === 0) return;
+
+    console.log(`Adjusting stock for order status change: ${oldStatus} -> ${newStatus}. Modifier: ${modifier}`);
+
+    // Update local state first
+    setInventory((prevInventory) => {
+      const updated = prevInventory.map((item) => {
+        const idStr = String(item.id);
+        if (deductions[idStr]) {
+          const change = deductions[idStr] * modifier;
+          const newStock = Math.max(0, item.stock + change);
+          return { ...item, stock: newStock };
+        }
+        return item;
+      });
+      localStorage.setItem("app_inventory", JSON.stringify(updated));
+      return updated;
+    });
+
+    // Write to Firestore if configured
+    if (isFirebaseConfigured && auth.currentUser) {
+      try {
+        const batch = writeBatch(db);
+        Object.entries(deductions).forEach(([id, amount]) => {
+          const itemRef = doc(db, "inventory", String(id));
+          batch.update(itemRef, { stock: increment(amount * modifier) });
+        });
+        await batch.commit();
+        console.log("Firestore stock updated successfully for status change");
+      } catch (err) {
+        console.error("Failed to update Firestore stock on status change:", err);
+      }
+    }
+  };
+
   const handleUpdateOrderStatus = async (
     orderId: string,
     status: "diterima" | "dimasak" | "diantar" | "selesai" | "dibatalkan",
@@ -2563,6 +2702,9 @@ export default function App() {
       showNotification("Pesanan tidak ditemukan di data lokal.");
       return;
     }
+
+    // Adjust stock inventory automatically based on transit of status (esp. cancelled "dibatalkan")
+    await updateInventoryStockForStatusChange(order, order.status, status);
 
     let actualId = order.firebaseKey || orderId;
 
@@ -2667,6 +2809,11 @@ export default function App() {
       (o) => String(o.id) === String(orderId) || o.firebaseKey === orderId,
     );
     if (!order) return;
+
+    if (updatedData.status !== undefined) {
+      await updateInventoryStockForStatusChange(order, order.status, updatedData.status);
+    }
+
     const actualId = String(order.firebaseKey || orderId);
     if (isFirebaseConfigured) {
       try {
@@ -3234,7 +3381,12 @@ export default function App() {
               address={address}
               onAddressChange={setAddress}
               paymentMethod={paymentMethod}
-              onPaymentMethodChange={setPaymentMethod}
+              onPaymentMethodChange={(method) => {
+                setPaymentMethod(method);
+                if (method === "QRIS") {
+                  showNotification("qris pembayaran");
+                }
+              }}
               cart={cart}
               onBack={() => setView("home")}
               onOrderPlaced={(name, phone, email, addr, isTestChecked) =>
@@ -3495,6 +3647,8 @@ function OwnerScreen({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const csvInputRef = useRef<HTMLInputElement>(null);
   const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null);
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
   const [newItem, setNewItem] = useState({
     name: "",
@@ -6514,11 +6668,11 @@ function OwnerScreen({
                         b.timestamp instanceof Date
                           ? b.timestamp
                           : new Date(b.timestamp);
-                      const timeDiff = timeB.getTime() - timeA.getTime();
+                      const timeDiff = timeA.getTime() - timeB.getTime();
                       if (timeDiff !== 0) return timeDiff;
                       const aId = a.firebaseKey || a.id || "";
                       const bId = b.firebaseKey || b.id || "";
-                      return bId.localeCompare(aId);
+                      return aId.localeCompare(bId);
                     })
                     .map((order, idx) => (
                       <div
@@ -6587,7 +6741,9 @@ function OwnerScreen({
                                   ? "bg-red-50 text-red-600"
                                   : order.status === "dimasak"
                                     ? "bg-orange-50 text-orange-600"
-                                    : "bg-purple-50 text-purple-600"
+                                    : order.status === "dibatalkan"
+                                      ? "bg-rose-100 text-rose-700 border border-rose-200"
+                                      : "bg-purple-50 text-purple-600"
                               }`}
                             >
                               {order.status}
@@ -6745,6 +6901,18 @@ function OwnerScreen({
                                   ))}
                               </div>
                             )}
+
+                          {order.notes && (
+                            <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50 my-1">
+                              <p className="text-[9px] font-bold text-orange-700 uppercase tracking-widest mb-1 font-black">
+                                CATATAN TRANSAKSI (KHUSUS)
+                              </p>
+                              <p className="text-[11px] font-bold text-[#3D2B1F]/80">
+                                {order.notes}
+                              </p>
+                            </div>
+                          )}
+
                           <div className="flex justify-between items-center">
                             <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest">
                               METODE PEMBAYARAN
@@ -6791,35 +6959,75 @@ function OwnerScreen({
                           )}
                         </div>
 
-                        <div className="flex gap-2 pt-4 border-t border-[#3D2B1F]/5">
-                          <button
-                            onClick={async () => {
-                              setUpdatingOrderId(order.firebaseKey || order.id);
-                              try {
-                                await onUpdateOrderStatus(
-                                  order.firebaseKey || order.id,
-                                  "selesai",
-                                );
-                              } catch (err) {
-                                console.error(
-                                  "Failed to update order status:",
-                                  err,
-                                );
-                              } finally {
-                                setUpdatingOrderId(null);
+                        {order.status !== "dibatalkan" && (
+                          <div className="flex gap-2 pt-4 border-t border-[#3D2B1F]/5">
+                            {cancelingOrderId === (order.firebaseKey || order.id) ? (
+                              <div className="flex-1 flex gap-1.5">
+                                <button
+                                  onClick={async () => {
+                                    setUpdatingOrderId(order.firebaseKey || order.id);
+                                    setCancelingOrderId(null);
+                                    try {
+                                      await onUpdateOrderStatus(
+                                        order.firebaseKey || order.id,
+                                        "dibatalkan",
+                                      );
+                                    } catch (err) {
+                                      console.error("Failed to cancel order:", err);
+                                    } finally {
+                                      setUpdatingOrderId(null);
+                                    }
+                                  }}
+                                  disabled={updatingOrderId === (order.firebaseKey || order.id)}
+                                  className="flex-1 bg-red-600 text-white text-xs font-black py-3.5 rounded-xl hover:bg-red-700 transition-all active:scale-95 shadow-md flex items-center justify-center gap-1"
+                                >
+                                  {updatingOrderId === (order.firebaseKey || order.id) ? "Memproses..." : "Ya, Batalkan!"}
+                                </button>
+                                <button
+                                  onClick={() => setCancelingOrderId(null)}
+                                  className="px-3 bg-gray-100 text-[#3D2B1F] text-xs font-bold py-3.5 rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+                                >
+                                  Tunda
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setCancelingOrderId(order.firebaseKey || order.id)}
+                                disabled={updatingOrderId === (order.firebaseKey || order.id)}
+                                className={`flex-1 bg-red-50 border border-red-200 text-red-600 text-xs font-bold py-3.5 rounded-xl hover:bg-red-100 transition-all active:scale-95 ${updatingOrderId === (order.firebaseKey || order.id) ? "opacity-30 cursor-not-allowed" : ""}`}
+                              >
+                                {updatingOrderId === (order.firebaseKey || order.id) ? "Memproses..." : "Batalkan"}
+                              </button>
+                            )}
+                            <button
+                              onClick={async () => {
+                                setUpdatingOrderId(order.firebaseKey || order.id);
+                                try {
+                                  await onUpdateOrderStatus(
+                                    order.firebaseKey || order.id,
+                                    "selesai",
+                                  );
+                                } catch (err) {
+                                  console.error(
+                                    "Failed to update order status:",
+                                    err,
+                                  );
+                                } finally {
+                                  setUpdatingOrderId(null);
+                                }
+                              }}
+                              disabled={
+                                updatingOrderId ===
+                                (order.firebaseKey || order.id)
                               }
-                            }}
-                            disabled={
-                              updatingOrderId ===
-                              (order.firebaseKey || order.id)
-                            }
-                            className={`w-full bg-[#3D2B1F] text-white text-xs font-bold py-3.5 rounded-xl shadow-lg hover:bg-black transition-all active:scale-95 ${updatingOrderId === (order.firebaseKey || order.id) ? "opacity-50 cursor-not-allowed" : ""}`}
-                          >
-                            {updatingOrderId === (order.firebaseKey || order.id)
-                              ? "Memproses..."
-                              : "Selesaikan Pesanan"}
-                          </button>
-                        </div>
+                              className={`flex-[1.5] bg-[#3D2B1F] text-white text-xs font-bold py-3.5 rounded-xl shadow-lg hover:bg-black transition-all active:scale-95 ${updatingOrderId === (order.firebaseKey || order.id) ? "opacity-50 cursor-not-allowed" : ""}`}
+                            >
+                              {updatingOrderId === (order.firebaseKey || order.id)
+                                ? "Memproses..."
+                                : "Selesaikan Pesanan"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     ))}
                 </div>
@@ -6879,11 +7087,11 @@ function OwnerScreen({
                         b.timestamp instanceof Date
                           ? b.timestamp
                           : new Date(b.timestamp);
-                      const timeDiff = timeB.getTime() - timeA.getTime();
+                      const timeDiff = timeA.getTime() - timeB.getTime();
                       if (timeDiff !== 0) return timeDiff;
                       const aId = a.firebaseKey || a.id || "";
                       const bId = b.firebaseKey || b.id || "";
-                      return bId.localeCompare(aId);
+                      return aId.localeCompare(bId);
                     })
                     .map((order, idx) => (
                       <div
@@ -6904,9 +7112,9 @@ function OwnerScreen({
                           </div>
                           <div className="absolute right-0 flex gap-1">
                             <button
-                              onClick={() => setEditingOrder(order)}
+                              onClick={() => openEditSalesOrderModal(order)}
                               className="h-8 w-8 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center hover:bg-stone-200 transition-colors"
-                              title="Edit Pesanan"
+                              title="Detail & Batalkan"
                             >
                               <Pencil size={14} />
                             </button>
@@ -7105,6 +7313,18 @@ function OwnerScreen({
                                   ))}
                               </div>
                             )}
+
+                          {order.notes && (
+                            <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50 my-1">
+                              <p className="text-[9px] font-bold text-orange-700 uppercase tracking-widest mb-1 font-black">
+                                CATATAN TRANSAKSI (KHUSUS)
+                              </p>
+                              <p className="text-[11px] font-bold text-[#3D2B1F]/80">
+                                {order.notes}
+                              </p>
+                            </div>
+                          )}
+
                           <div className="flex justify-between items-center">
                             <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest">
                               METODE PEMBAYARAN
@@ -7149,6 +7369,323 @@ function OwnerScreen({
                               )}
                             </div>
                           )}
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+            {/* Pesanan Dibatalkan Hari Ini */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4 px-2">
+                <h3 className="font-bold text-[#3D2B1F]">
+                  Pesanan Dibatalkan Hari Ini
+                </h3>
+                <span className="bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-bold px-3 py-1 rounded-full">
+                  {
+                    orders.filter(
+                      (o) =>
+                        o.status === "dibatalkan" &&
+                        o.timestamp.toDateString() ===
+                          new Date().toDateString() &&
+                        !o.isDeleted,
+                    ).length
+                  }{" "}
+                  Dibatalkan
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                {orders.filter(
+                  (o) =>
+                    o.status === "dibatalkan" &&
+                    o.timestamp.toDateString() === new Date().toDateString() &&
+                    !o.isDeleted,
+                ).length === 0 ? (
+                  <div className="bg-white p-10 rounded-[2.5rem] shadow-sm border border-[#3D2B1F]/5 flex flex-col items-center justify-center text-center">
+                    <div className="h-16 w-16 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mb-3">
+                      <XCircle size={32} />
+                    </div>
+                    <p className="text-sm text-[#3D2B1F]/40">
+                      Belum ada pesanan dibatalkan hari ini.
+                    </p>
+                  </div>
+                ) : (
+                  orders
+                    .filter(
+                      (o) =>
+                        o.status === "dibatalkan" &&
+                        o.timestamp.toDateString() ===
+                          new Date().toDateString() &&
+                        !o.isDeleted,
+                    )
+                    .sort((a, b) => {
+                      const timeA =
+                        a.timestamp instanceof Date
+                          ? a.timestamp
+                          : new Date(a.timestamp);
+                      const timeB =
+                        b.timestamp instanceof Date
+                          ? b.timestamp
+                          : new Date(b.timestamp);
+                      const timeDiff = timeA.getTime() - timeB.getTime();
+                      if (timeDiff !== 0) return timeDiff;
+                      const aId = a.firebaseKey || a.id || "";
+                      const bId = b.firebaseKey || b.id || "";
+                      return aId.localeCompare(bId);
+                    })
+                    .map((order, idx) => (
+                      <div
+                        key={
+                          order.firebaseKey ||
+                          `${order.id}-${order.sessionId || idx}`
+                        }
+                        className="bg-white p-6 rounded-[2rem] shadow-sm border border-[#3D2B1F]/5 flex flex-col gap-4 border-l-4 border-l-rose-500"
+                      >
+                        <div className="flex justify-center items-center relative border-b border-[#3D2B1F]/5 pb-3">
+                          <div className="text-center">
+                            <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest">
+                              NOTA PESANAN
+                            </p>
+                            <p className="text-lg font-bold text-[#3D2B1F]">
+                              #{getSequentialOrderNumber(order, orders)}
+                            </p>
+                          </div>
+                          <div className="absolute right-0 flex gap-1">
+                            <button
+                              onClick={() => openEditSalesOrderModal(order)}
+                              className="h-8 w-8 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center hover:bg-stone-200 transition-colors"
+                              title="Detail"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                            <button
+                              onClick={() => setOrderToDelete(order.id)}
+                              className="h-8 w-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors"
+                              title="Hapus Pesanan"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start justify-between border-b border-[#3D2B1F]/5 pb-3">
+                          <div className="text-left">
+                            <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest">
+                              INFO PELANGGAN
+                            </p>
+                            <p className="font-bold text-[#3D2B1F] text-lg">
+                              {order.customerName}
+                            </p>
+                            {order.customerPhone && (
+                              <p className="text-xs text-[#3D2B1F]/60 mt-0.5 flex items-center gap-1">
+                                <Phone size={10} /> {order.customerPhone}
+                              </p>
+                            )}
+                            {order.customerAddress && (
+                              <p className="text-xs text-[#3D2B1F]/60 mt-1 flex items-start gap-1">
+                                <MapPin
+                                  size={10}
+                                  className="mt-0.5 min-w-[10px]"
+                                />{" "}
+                                <span className="line-clamp-2">
+                                  {order.customerAddress}
+                                </span>
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right flex flex-col items-end justify-center">
+                            <div className="flex items-center justify-end gap-1.5 text-rose-700 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
+                              <div className="h-1.5 w-1.5 rounded-full bg-rose-500"></div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider">
+                                Dibatalkan
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest mb-2">
+                              MENU PESANAN
+                            </p>
+                            {(() => {
+                              const grouped = getGroupedItems(order.items);
+                              const mains: any[] = [];
+                              const addonsMap: Record<string, number> = {};
+
+                              grouped.forEach((gi) => {
+                                const nameLower = gi.item.name.toLowerCase();
+                                const isToppingName =
+                                  ["telur", "sosis", "sayur", "cabe"].some(
+                                    (t) => nameLower === t,
+                                  ) ||
+                                  nameLower.includes("+rp") ||
+                                  nameLower.includes("+ rp");
+                                const isMenuTambahan =
+                                  nameLower === "menu tambahan";
+
+                                if (!isToppingName && !isMenuTambahan) {
+                                  mains.push(gi);
+                                } else if (isToppingName || isMenuTambahan) {
+                                  if (isToppingName) {
+                                    addonsMap[gi.item.name] =
+                                      (addonsMap[gi.item.name] || 0) +
+                                      gi.quantity;
+                                  }
+                                }
+                                const toppingsSource =
+                                  gi.accumulatedToppings || gi.toppings;
+                                if (
+                                  toppingsSource &&
+                                  toppingsSource.length > 0
+                                ) {
+                                  toppingsSource.forEach((t) => {
+                                    addonsMap[t] = (addonsMap[t] || 0) + 1;
+                                  });
+                                }
+                              });
+
+                              return (
+                                <>
+                                  {mains.map((item, idx) => {
+                                    const uPrice =
+                                      item.item.priceNum ||
+                                      parseInt(
+                                        item.item.price
+                                          ?.toString()
+                                          .replace(/[^0-9]/g, "") || "0",
+                                      ) ||
+                                      0;
+                                    return (
+                                      <div key={`main-${idx}`} className="mb-2">
+                                        <div className="flex justify-between items-start">
+                                          <p className="text-sm font-bold text-[#3D2B1F]">
+                                            {item.item.name.toLowerCase()} -{" "}
+                                            {item.quantity}
+                                          </p>
+                                          <span className="text-sm font-bold text-[#3D2B1F]">
+                                            Rp{" "}
+                                            {(
+                                              uPrice * item.quantity
+                                            ).toLocaleString("id-ID")}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+
+                                  <div className="border-t border-dashed border-[#3D2B1F]/20 my-2"></div>
+
+                                  {Object.keys(addonsMap).length > 0 && (
+                                    <div className="mb-2">
+                                      <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest mb-1.5">
+                                        ADD ON :
+                                      </p>
+                                      <div className="space-y-1">
+                                        {Object.entries(addonsMap).map(
+                                          ([name, count]) => {
+                                            const tPrice =
+                                              getToppingPrice(name);
+                                            const cleanName = name
+                                              .split("+")[0]
+                                              .split("Rp")[0]
+                                              .trim()
+                                              .toLowerCase();
+                                            const isSaus =
+                                              cleanName.includes("saus") ||
+                                              cleanName.includes("sambal") ||
+                                              cleanName.includes("tomat");
+                                            return (
+                                              <div
+                                                key={name}
+                                                className="flex justify-between items-center text-sm font-bold text-[#3D2B1F]"
+                                              >
+                                                <span>
+                                                  {isSaus
+                                                    ? cleanName
+                                                    : `${cleanName} - ${count}`}
+                                                </span>
+                                                <span>
+                                                  Rp{" "}
+                                                  {(
+                                                    tPrice * count
+                                                  ).toLocaleString("id-ID")}
+                                                </span>
+                                              </div>
+                                            );
+                                          },
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                            <div className="border-t border-dashed border-[#3D2B1F]/20 my-2"></div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 pt-1">
+                          <div className="flex justify-between items-center uppercase">
+                            <p className="text-[10px] font-bold text-[#3D2B1F]/40 tracking-widest">
+                              TOTAL PEMBAYARAN
+                            </p>
+                            <p className="text-sm font-bold text-[#3D2B1F]">
+                              Rp {(order.total || 0).toLocaleString()}
+                            </p>
+                          </div>
+                          {order.items &&
+                            Array.isArray(order.items) &&
+                            order.items.some((i) => i.notes) && (
+                              <div className="pt-1">
+                                <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest mb-0.5">
+                                  CATATAN PESANAN
+                                </p>
+                                {order.items
+                                  .filter((i) => i.notes)
+                                  .map((item, nIdx) => (
+                                    <p
+                                      key={nIdx}
+                                      className="text-[11px] text-[#3D2B1F]/60 italic"
+                                    >
+                                      - {item.item.name}: {item.notes}
+                                    </p>
+                                  ))}
+                              </div>
+                            )}
+
+                          {order.notes && (
+                            <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50 my-1">
+                              <p className="text-[9px] font-bold text-orange-700 uppercase tracking-widest mb-1 font-black">
+                                CATATAN TRANSAKSI (KHUSUS)
+                              </p>
+                              <p className="text-[11px] font-bold text-[#3D2B1F]/80">
+                                {order.notes}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between items-center">
+                            <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest">
+                              METODE PEMBAYARAN
+                            </p>
+                            <p className="text-sm font-bold text-[#3D2B1F]">
+                              {order.paymentMethod || "TUNAI"}
+                            </p>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest">
+                              JAM PEMESANAN
+                            </p>
+                            <p className="text-sm font-bold text-[#3D2B1F]">
+                              {order.timestamp.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -7372,7 +7909,7 @@ function OwnerScreen({
                             <span className="block text-xs font-bold text-[#3D2B1F]/60 uppercase tracking-wide mb-1 flex items-center gap-2">
                               {k === "q1" && "1. Mudah Menemukan Menu"}
                               {k === "q2" && "2. Tampilan & Desain"}
-                              {k === "q3" && "3. Kejelasan Harga"}
+                              {k === "q3" && "3. Kemudahan Keranjang Belanja"}
                               {k === "q4" && "4. Kendala Teknis"}
                               {k === "q5" && "5. Alur Pemesanan"}
                               {k === "q6" && "6. Saran & Masukan"}
@@ -7975,11 +8512,11 @@ function OwnerScreen({
                       b.timestamp instanceof Date
                         ? b.timestamp
                         : new Date(b.timestamp);
-                    const timeDiff = timeB.getTime() - timeA.getTime();
+                    const timeDiff = timeA.getTime() - timeB.getTime();
                     if (timeDiff !== 0) return timeDiff;
                     const aId = a.firebaseKey || a.id || "";
                     const bId = b.firebaseKey || b.id || "";
-                    return bId.localeCompare(aId);
+                    return aId.localeCompare(bId);
                   }).length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-[#3D2B1F]/40 text-sm font-bold">
@@ -8001,11 +8538,11 @@ function OwnerScreen({
                         b.timestamp instanceof Date
                           ? b.timestamp
                           : new Date(b.timestamp);
-                      const timeDiff = timeB.getTime() - timeA.getTime();
+                      const timeDiff = timeA.getTime() - timeB.getTime();
                       if (timeDiff !== 0) return timeDiff;
                       const aId = a.firebaseKey || a.id || "";
                       const bId = b.firebaseKey || b.id || "";
-                      return bId.localeCompare(aId);
+                      return aId.localeCompare(bId);
                     })
                     .map((order: any, idx: number) => (
                       <div
@@ -8291,6 +8828,17 @@ function OwnerScreen({
                                     ))}
                                 </div>
                               )}
+
+                            {order.notes && (
+                              <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100/50">
+                                <p className="text-[9px] font-bold text-orange-700 uppercase tracking-widest mb-1">
+                                  CATATAN TRANSAKSI (KHUSUS)
+                                </p>
+                                <p className="text-[12px] font-bold text-[#3D2B1F]/80">
+                                  {order.notes}
+                                </p>
+                              </div>
+                            )}
 
                             <div className="space-y-4 px-1">
                               <div className="flex justify-between items-center">
@@ -8659,21 +9207,33 @@ function OwnerScreen({
                           <RefreshCw size={14} />
                           Pulihkan
                         </button>
-                        <button
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "Hapus pesanan ini secara permanen? Tindakan ini tidak dapat dibatalkan.",
-                              )
-                            ) {
-                              onPermanentDelete(order.firebaseKey || order.id);
-                            }
-                          }}
-                          className="flex-1 bg-red-50 text-red-600 text-xs font-bold py-3.5 rounded-xl border border-red-100 hover:bg-red-100 transition-all flex items-center justify-center gap-2"
-                        >
-                          <Trash2 size={14} />
-                          Hapus Permanen
-                        </button>
+                        {deletingOrderId === (order.firebaseKey || order.id) ? (
+                          <div className="flex-1 flex gap-1.5">
+                            <button
+                              onClick={() => {
+                                onPermanentDelete(order.firebaseKey || order.id);
+                                setDeletingOrderId(null);
+                              }}
+                              className="flex-1 bg-red-600 text-white text-[11px] font-black py-3.5 rounded-xl hover:bg-red-700 transition-all flex items-center justify-center gap-1 shadow-md"
+                            >
+                              Ya, Lah!
+                            </button>
+                            <button
+                              onClick={() => setDeletingOrderId(null)}
+                              className="px-3 bg-gray-100 text-[#3D2B1F] text-xs font-bold py-3.5 rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeletingOrderId(order.firebaseKey || order.id)}
+                            className="flex-1 bg-red-50 text-red-600 text-xs font-bold py-3.5 rounded-xl border border-red-100 hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Trash2 size={14} />
+                            Hapus Permanen
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -8823,351 +9383,128 @@ function OwnerScreen({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-lg bg-white rounded-[2rem] p-6 shadow-2xl overflow-y-auto max-h-[90vh]"
             >
-              <h3 className="text-xl font-bold text-[#3D2B1F] mb-4">
-                Edit Transaksi
-              </h3>
-              {manualOrderError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs font-bold">
-                  {manualOrderError}
-                </div>
-              )}
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-1">
-                      Nama Pelanggan
-                    </label>
-                    <input
-                      type="text"
-                      value={manualOrderCustomerName}
-                      onChange={(e) =>
-                        setManualOrderCustomerName(e.target.value)
-                      }
-                      placeholder="Nama"
-                      className="w-full bg-[#3D2B1F]/5 rounded-xl px-4 py-2 text-sm font-bold text-[#3D2B1F] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-1">
-                      No. WhatsApp
-                    </label>
-                    <input
-                      type="text"
-                      value={manualOrderCustomerPhone}
-                      onChange={(e) =>
-                        setManualOrderCustomerPhone(e.target.value)
-                      }
-                      placeholder="08..."
-                      className="w-full bg-[#3D2B1F]/5 rounded-xl px-4 py-2 text-sm font-bold text-[#3D2B1F] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-1">
-                      Tanggal & Waktu
-                    </label>
-                    <input
-                      type="datetime-local"
-                      value={manualOrderDate}
-                      onChange={(e) => setManualOrderDate(e.target.value)}
-                      className="w-full bg-[#3D2B1F]/5 rounded-xl px-4 py-2 text-xs font-bold text-[#3D2B1F] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-1">
-                      Metode Bayar
-                    </label>
-                    <select
-                      value={manualOrderPaymentMethod}
-                      onChange={(e) =>
-                        setManualOrderPaymentMethod(e.target.value as any)
-                      }
-                      className="w-full bg-[#3D2B1F]/5 rounded-xl px-4 py-2 text-sm font-bold text-[#3D2B1F] focus:outline-none"
-                    >
-                      <option value="Tunai">Tunai</option>
-                      <option value="Transfer">Transfer</option>
-                      <option value="QRIS">QRIS</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="p-4 bg-[#3D2B1F]/5 rounded-2xl">
-                  <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-2">
-                    Tambah Menu
-                  </label>
-                  <div className="flex gap-2 mb-3">
-                    <select
-                      value={manualOrderSelectedItemId || ""}
-                      onChange={(e) => {
-                        setManualOrderSelectedItemId(
-                          e.target.value ? parseInt(e.target.value) : null,
-                        );
-                        setManualOrderSelectedToppings([]);
-                      }}
-                      className="flex-1 bg-white rounded-xl px-3 py-2 text-xs font-bold text-[#3D2B1F] focus:outline-none"
-                    >
-                      <option value="">Pilih Menu...</option>
-                      {ALL_MENU_ITEMS.map((item) => {
-                        const displayName =
-                          item.name === "Add on" ? "Add on" : item.name;
-                        const displayPrice = item.price.startsWith("Rp")
-                          ? item.price
-                          : `Rp ${item.price}`;
-                        return (
-                          <option key={item.id} value={item.id}>
-                            {displayName} - {displayPrice}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    <input
-                      type="number"
-                      value={manualOrderItemQuantity}
-                      onChange={(e) =>
-                        setManualOrderItemQuantity(
-                          e.target.value === ""
-                            ? ""
-                            : parseInt(e.target.value) || 0,
-                        )
-                      }
-                      className="w-16 bg-white rounded-xl px-2 py-2 text-center text-xs font-bold text-[#3D2B1F] focus:outline-none"
-                      min="1"
-                    />
-                    <button
-                      onClick={addManualOrderItem}
-                      className="bg-[#3D2B1F] text-white p-2 rounded-xl"
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </div>
-
-                  {manualOrderSelectedItemId && (
-                    <div className="mb-3">
-                      <p className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest mb-2">
-                        Pilih Add-on:
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        {getToppingsForItem(
-                          ALL_MENU_ITEMS.find(
-                            (i) => i.id === manualOrderSelectedItemId,
-                          )?.name || "",
-                        ).map((topping) => {
-                          const activePrice =
-                            localToppingPrices[topping.name] !== undefined
-                              ? localToppingPrices[topping.name]
-                              : topping.defaultPrice;
-                          const isSelected =
-                            manualOrderSelectedToppings.includes(topping.name);
-                          const quantity = manualOrderSelectedToppings.filter(
-                            (t) => t === topping.name,
-                          ).length;
-
-                          return (
-                            <div
-                              key={topping.name}
-                              className={`flex items-center justify-between rounded-xl p-2 border transition-all ${isSelected ? "border-[#3D2B1F]/30 bg-white shadow-sm" : "border-[#1C1C1E]/10 bg-[#F3F1ED]"}`}
-                            >
-                              <div className="flex flex-col ml-2">
-                                <div className="flex items-center gap-1">
-                                  <span
-                                    className={`text-xs font-bold ${isSelected ? "text-[#3D2B1F]" : "text-[#3D2B1F]/60"}`}
-                                  >
-                                    {topping.name}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleEditToppingPrice(
-                                        topping.name,
-                                        activePrice,
-                                      );
-                                    }}
-                                    className="text-[#3D2B1F]/40 hover:text-[#3D2B1F] p-3 -m-2 active:bg-black/5 rounded-full transition-colors"
-                                    title={`Edit harga ${topping.name}`}
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
-                                </div>
-                                {activePrice > 0 && (
-                                  <span className="text-[10px] text-[#3D2B1F]/50 font-semibold">
-                                    +{`${activePrice.toLocaleString()}`}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 bg-[#F3F1ED] p-1 rounded-xl mr-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    let removed = false;
-                                    setManualOrderSelectedToppings((prev) =>
-                                      prev.filter((t) => {
-                                        if (t === topping.name && !removed) {
-                                          removed = true;
-                                          return false;
-                                        }
-                                        return true;
-                                      }),
-                                    );
-                                  }}
-                                  className="w-7 h-7 flex items-center justify-center bg-white rounded-lg shadow-sm text-base font-bold text-[#3D2B1F] active:scale-95 transition-all"
-                                >
-                                  -
-                                </button>
-                                <input
-                                  type="number"
-                                  value={quantity === 0 ? "" : quantity}
-                                  placeholder="0"
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value);
-                                    const validVal = isNaN(val)
-                                      ? 0
-                                      : Math.max(0, val);
-                                    setManualOrderSelectedToppings((prev) => {
-                                      const filtered = prev.filter(
-                                        (t) => t !== topping.name,
-                                      );
-                                      const newToppings = Array(validVal).fill(
-                                        topping.name,
-                                      );
-                                      return [...filtered, ...newToppings];
-                                    });
-                                  }}
-                                  className="w-12 h-7 text-center font-bold text-[#3D2B1F] text-sm rounded-lg border border-transparent focus:border-[#D4AF37]/50 focus:ring-2 focus:ring-[#D4AF37]/20 focus:outline-none bg-white shadow-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                  min="0"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setManualOrderSelectedToppings((prev) => [
-                                      ...prev,
-                                      topping.name,
-                                    ])
-                                  }
-                                  className="w-7 h-7 flex items-center justify-center bg-[#3D2B1F] text-white rounded-lg shadow-sm text-base font-bold active:scale-95 transition-all"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {manualOrderItems.length > 0 && (
-                    <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1 pb-1">
-                      {manualOrderItems.map((item, idx) => (
-                        <div
-                          key={idx}
-                          className="flex flex-col bg-white p-3 rounded-lg text-[10px] shadow-sm border border-[#3D2B1F]/5"
-                        >
-                          <div className="flex items-start justify-between">
-                            <p className="font-bold text-[#3D2B1F]">
-                              {item.item.name} - {item.quantity}
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <p className="font-bold text-[#3D2B1F] whitespace-nowrap">
-                                Rp {(item.item.priceNum || 0).toLocaleString()}
-                              </p>
-                              <button
-                                onClick={() => removeManualOrderItem(idx)}
-                                className="text-red-500 hover:text-red-700 transition-colors bg-red-50 p-1 rounded-md"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                          </div>
-                          {item.toppings && item.toppings.length > 0 && (
-                            <ul className="mt-1.5 list-none space-y-1 ml-4 border-l-2 border-[#3D2B1F]/10 pl-2">
-                              {item.toppings.map((tNameStr, tIdx) => {
-                                const matchPrice = tNameStr.match(
-                                  /^(.*?)(?:\s*\+Rp\s*(\d+))?$/,
-                                );
-                                const tName = matchPrice
-                                  ? matchPrice[1].trim()
-                                  : tNameStr;
-                                const tPrice =
-                                  matchPrice && matchPrice[2]
-                                    ? parseInt(matchPrice[2])
-                                    : tName.toLowerCase() === "telur"
-                                      ? 3000
-                                      : tName.toLowerCase() === "sosis"
-                                        ? 1000
-                                        : 0;
-
-                                return (
-                                  <li
-                                    key={tIdx}
-                                    className="text-[9px] text-[#3D2B1F]/60 flex items-center justify-between w-full"
-                                  >
-                                    <span className="italic">+{tName}</span>
-                                    {tPrice > 0 && (
-                                      <span className="whitespace-nowrap font-medium text-[#3D2B1F]">
-                                        +Rp {tPrice.toLocaleString()}
-                                      </span>
-                                    )}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          )}
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#3D2B1F]/5">
-                            <p className="text-[#3D2B1F]/60 font-bold uppercase tracking-wider text-[8px]">
-                              Sub-Total
-                            </p>
-                            <p className="font-black text-[#D4AF37] text-xs">
-                              Rp {item.totalPrice.toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-1">
-                      Total (Rp)
-                    </label>
-                    <input
-                      type="number"
-                      value={manualOrderTotal}
-                      onChange={(e) => setManualOrderTotal(e.target.value)}
-                      className="w-full bg-[#3D2B1F]/5 rounded-xl px-4 py-2 text-sm font-bold text-[#3D2B1F] focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-[#3D2B1F]/60 uppercase tracking-widest mb-1">
-                      Profit (Rp)
-                    </label>
-                    <input
-                      type="number"
-                      value={manualOrderProfit}
-                      onChange={(e) => setManualOrderProfit(e.target.value)}
-                      className="w-full bg-[#3D2B1F]/5 rounded-xl px-4 py-2 text-sm font-bold text-[#3D2B1F] focus:outline-none"
-                    />
-                  </div>
-                </div>
+              <div className="flex justify-between items-center pb-4 border-b border-[#3D2B1F]/5 mb-4">
+                <h3 className="text-xl font-bold text-[#3D2B1F]">
+                  Detail & Pembatalan Transaksi
+                </h3>
+                <button 
+                  onClick={() => setEditingSalesOrder(null)} 
+                  className="text-[#3D2B1F]/40 hover:text-[#3D2B1F] p-1 rounded-full hover:bg-stone-100 transition-colors"
+                >
+                  <X size={20} />
+                </button>
               </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setEditingSalesOrder(null)}
-                  className="flex-1 py-3 rounded-xl font-bold text-sm text-[#3D2B1F]/60 hover:bg-[#3D2B1F]/5 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={handleEditSalesOrder}
-                  className="flex-1 py-3 rounded-xl font-bold text-sm bg-[#3D2B1F] text-white hover:bg-black transition-colors"
-                >
-                  Simpan Perubahan
-                </button>
+
+              <div className="space-y-6">
+                <div className="bg-[#3D2B1F]/5 p-4 rounded-2xl space-y-3">
+                  <div className="flex justify-between items-center border-b border-[#3D2B1F]/10 pb-2">
+                    <span className="text-xs font-bold text-[#3D2B1F]/50">NO. NOTA</span>
+                    <span className="text-sm font-bold text-[#3D2B1F]">#{getSequentialOrderNumber(editingSalesOrder, orders)}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-[#3D2B1F]/10 pb-2">
+                    <span className="text-xs font-bold text-[#3D2B1F]/50">NAMA PELANGGAN</span>
+                    <span className="text-sm font-bold text-[#3D2B1F]">{editingSalesOrder.customerName || "Pelanggan"}</span>
+                  </div>
+                  {editingSalesOrder.customerPhone && (
+                    <div className="flex justify-between items-center border-b border-[#3D2B1F]/10 pb-2">
+                      <span className="text-xs font-bold text-[#3D2B1F]/50">NO. WHATSAPP</span>
+                      <span className="text-xs font-bold text-[#3D2B1F]">{editingSalesOrder.customerPhone}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center border-b border-[#3D2B1F]/10 pb-2">
+                    <span className="text-xs font-bold text-[#3D2B1F]/50">METODE BAYAR</span>
+                    <span className="text-sm font-bold text-[#3D2B1F]">{editingSalesOrder.paymentMethod || "TUNAI"}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-[#3D2B1F]/10 pb-2">
+                    <span className="text-xs font-bold text-[#3D2B1F]/50">STATUS PESANAN</span>
+                    <span className="text-sm font-bold capitalize text-[#3D2B1F]">{editingSalesOrder.status}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-[#3D2B1F]/50">TOTAL TRANSAKSI</span>
+                    <span className="text-sm font-black text-[#D4AF37]">Rp {(editingSalesOrder.total || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest block mb-2 font-black">Item Pesanan</span>
+                  <div className="bg-white border border-[#3D2B1F]/5 p-4 rounded-2xl max-h-40 overflow-y-auto space-y-2">
+                    {(editingSalesOrder.items || []).map((cartItem: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-start text-xs border-b border-dashed border-[#3D2B1F]/5 pb-2 last:border-b-0 last:pb-0">
+                        <div>
+                          <p className="font-bold text-[#3D2B1F] capitalize">{cartItem.item.name} x {cartItem.quantity}</p>
+                          {cartItem.toppings && cartItem.toppings.length > 0 && (
+                            <p className="text-[10px] text-[#3D2B1F]/60">+{cartItem.toppings.join(", ")}</p>
+                          )}
+                        </div>
+                        <span className="font-black text-[#3D2B1F]">Rp {(cartItem.totalPrice || 0).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-[#3D2B1F]/40 uppercase tracking-widest block mb-1.5 font-black">
+                    CATATAN TRANSAKSI (EDITABLE)
+                  </label>
+                  <textarea
+                    value={editingSalesOrder.notes || ""}
+                    onChange={(e) =>
+                      setEditingSalesOrder({
+                        ...editingSalesOrder,
+                        notes: e.target.value,
+                      })
+                    }
+                    className="w-full bg-[#3D2B1F]/5 border border-[#3D2B1F]/10 rounded-2xl px-4 py-3 text-xs font-bold text-[#3D2B1F] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/20 placeholder-[#3D2B1F]/20 resize-none h-20"
+                    placeholder="Tambahkan atau edit catatan khusus transaksi di sini..."
+                  />
+                </div>
+
+                {editingSalesOrder.status === "dibatalkan" ? (
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-center text-red-600 text-xs font-bold">
+                    Transaksi ini sudah dalam status dibatalkan.
+                  </div>
+                ) : (
+                  <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl text-orange-700 text-xs font-bold">
+                    Klik "Batalkan Transaksi" untuk memproses pembatalan. Tindakan ini akan mengubah status transaksi menjadi dibatalkan serta otomatis mengurangi omzet dan profit Anda.
+                  </div>
+                )}
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setEditingSalesOrder(null)}
+                    className="px-4 py-3 rounded-xl font-bold text-sm text-[#3D2B1F]/60 hover:bg-[#3D2B1F]/5 transition-colors"
+                  >
+                    Tutup
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onEditOrder(editingSalesOrder.id, {
+                        ...editingSalesOrder,
+                      });
+                      setEditingSalesOrder(null);
+                    }}
+                    className="flex-1 py-3 rounded-xl font-bold text-sm bg-[#3D2B1F] text-white hover:bg-black transition-colors active:scale-95 transition-all text-center"
+                  >
+                    Simpan Catatan
+                  </button>
+                  {editingSalesOrder.status !== "dibatalkan" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onEditOrder(editingSalesOrder.id, {
+                          ...editingSalesOrder,
+                          status: "dibatalkan",
+                        });
+                        setEditingSalesOrder(null);
+                      }}
+                      className="flex-1 py-3 rounded-xl font-bold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors active:scale-95 transition-all text-center"
+                    >
+                      Batalkan Transaksi
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>
@@ -11159,9 +11496,15 @@ function HomeScreen({
                           const newEmail = e.target.value;
                           setUserProfile({ ...userProfile, email: newEmail });
                           const lower = newEmail.toLowerCase();
-                          if (lower === "indominitemode@gmail.com" && setIsDemoMode) {
+                          if (
+                            lower === "indominitemode@gmail.com" &&
+                            setIsDemoMode
+                          ) {
                             setIsDemoMode(true);
-                          } else if (lower === "indominite@gmail.com" && setIsDemoMode) {
+                          } else if (
+                            lower === "indominite@gmail.com" &&
+                            setIsDemoMode
+                          ) {
                             setIsDemoMode(false);
                           }
 
@@ -11207,7 +11550,10 @@ function HomeScreen({
                 {profileSubView === "Metode Pembayaran" && (
                   <div className="space-y-4 pb-36">
                     <div
-                      onClick={() => setSelectedPaymentMethod("QRIS")}
+                      onClick={() => {
+                        setSelectedPaymentMethod("QRIS");
+                        showNotification("qris pembayaran");
+                      }}
                       className={`p-5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${selectedPaymentMethod === "QRIS" ? "bg-[#3D2B1F] text-white border-[#3D2B1F] shadow-lg" : "bg-white text-[#3D2B1F] border-[#3D2B1F]/5 shadow-sm"}`}
                     >
                       <div className="flex items-center gap-4">
@@ -11235,13 +11581,13 @@ function HomeScreen({
                     </div>
 
                     {selectedPaymentMethod === "QRIS" && (
-                      <div className="flex justify-center p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                        <img
-                          src="https://raw.githubusercontent.com/Dinni-hub/QRIS-pembayaran/main/Screenshot%202026-04-22%20202242.png"
-                          alt="QRIS Pembayaran Indomi Nite"
-                          className="max-w-[200px] w-full rounded-xl object-contain drop-shadow-sm mix-blend-multiply"
-                          referrerPolicy="no-referrer"
-                        />
+                      <div className="w-full p-6 bg-white/50 rounded-2xl border-2 border-dashed border-[#3D2B1F]/10 flex flex-col items-center justify-center min-h-[120px]">
+                        <p className="text-xs font-bold text-[#3D2B1F]/40 uppercase tracking-widest text-center">
+                          Metode QRIS Terpilih
+                        </p>
+                        <p className="text-[10px] text-[#3D2B1F]/30 mt-1 font-semibold text-center">
+                          qris pembayaran
+                        </p>
                       </div>
                     )}
 
@@ -11991,14 +12337,13 @@ function CheckoutScreen({
             </button>
 
             {paymentMethod === "QRIS" && (
-              <div className="w-full relative flex justify-center p-4 bg-white/50 rounded-2xl border border-[#3D2B1F]/5 overflow-hidden">
-                <img
-                  src="https://raw.githubusercontent.com/Dinni-hub/QRIS-pembayaran/main/Screenshot%202026-04-22%20202242.png"
-                  alt="QRIS Pembayaran Indomi Nite"
-                  className="max-w-[200px] w-full rounded-xl object-contain drop-shadow-md cursor-pointer hover:scale-105 transition-transform"
-                  referrerPolicy="no-referrer"
-                  onClick={() => setIsQrExpanded(true)}
-                />
+              <div className="w-full p-6 bg-white/50 rounded-2xl border-2 border-dashed border-[#3D2B1F]/10 flex flex-col items-center justify-center min-h-[120px]">
+                <p className="text-xs font-bold text-[#3D2B1F]/40 uppercase tracking-widest text-center">
+                  Metode QRIS Terpilih
+                </p>
+                <p className="text-[10px] text-[#3D2B1F]/30 mt-1 font-semibold text-center">
+                  qris pembayaran
+                </p>
               </div>
             )}
 
@@ -12551,14 +12896,24 @@ function OrdersScreen({
                 String(primaryOrder.orderNumber) === "9999";
 
               // Count orders that were placed BEFORE this primaryOrder and are still active
+              const primaryDateObj =
+                primaryOrder.timestamp instanceof Date
+                  ? primaryOrder.timestamp
+                  : (primaryOrder.timestamp as any)?.toDate?.() ||
+                    new Date(primaryOrder.timestamp);
+              const primaryDateStr = primaryDateObj.toDateString();
+
               const queuedBeforeMeCount = orders.filter((o) => {
-                const t =
+                const oDateObj =
                   o.timestamp instanceof Date
-                    ? o.timestamp.getTime()
-                    : (o.timestamp as any)?.toDate?.()?.getTime() ||
-                      new Date(o.timestamp).getTime();
+                    ? o.timestamp
+                    : (o.timestamp as any)?.toDate?.() || new Date(o.timestamp);
+
+                const t = oDateObj.getTime();
+
                 return (
                   o.id !== primaryOrder.id &&
+                  oDateObj.toDateString() === primaryDateStr &&
                   t < primaryTime &&
                   o.status !== "selesai" &&
                   o.status !== "dibatalkan" &&
